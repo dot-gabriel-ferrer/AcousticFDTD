@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+	<lista_de_tests>
+		<test_1>
+			<room dimx="1." dimy="1." dimz="1." dres="0.1" pinix="0." piniy="0." piniz="0.">
+				<muro posx="0." ></muro>
+				<muro posx="0." ></muro>
+			</room>
+			<source sample_rate="44100" duration="1" frequency="100" phase="0"></source>
+			<sim duration="0.5"></sim>
+		</test_1>
+
+		<test_2>
+			<room dimx="1." dimy="1." dimz="1." dres="0.1" pinix="0." piniy="0." piniz="0."></room>
+			<source sample_rate="44100" duration="1" frequency="100" phase="0"></source>
+			<sim duration="0.5"></sim>
+		</test_2>
+	</lista_de_tests>
+</configuration>
