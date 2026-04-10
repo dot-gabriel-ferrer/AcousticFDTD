@@ -4,11 +4,11 @@
 
 A professional 3D acoustic wave propagation simulator using the **Finite-Difference Time-Domain (FDTD)** method. Includes both a Python simulation engine and an interactive web-based demo.
 
-## 🌐 Live Demo
+## Live Demo
 
-**[Launch Web Simulator →](https://dot-gabriel-ferrer.github.io/AcousticFDTD/)**
+**[Launch Web Simulator](https://dot-gabriel-ferrer.github.io/AcousticFDTD/)**
 
-The web version runs entirely in your browser — no installation required.
+The web version runs entirely in your browser with no installation required.
 
 ## Features
 
