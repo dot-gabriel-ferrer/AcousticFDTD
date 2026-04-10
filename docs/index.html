@@ -3,292 +3,369 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AcousticFDTD — 3D Acoustic Wave Simulator</title>
-    <meta name="description" content="Interactive 3D acoustic wave propagation simulator using the FDTD method. Runs entirely in your browser.">
+    <title>AcousticFDTD — Professional 3D Acoustic Wave Simulator</title>
+    <meta name="description" content="Advanced 3D acoustic wave propagation simulator using FDTD method for research and engineering applications">
     <link rel="stylesheet" href="css/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        .hero {
+            min-height: 70vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 3rem 2rem;
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            max-width: 700px;
+            margin: 0 auto 2rem;
+            line-height: 1.8;
+        }
+
+        .hero .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+
+        .hero .btn {
+            padding: 0.9rem 2rem;
+            font-size: 1.05rem;
+        }
+
+        .features {
+            padding: 4rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .features h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 3rem;
+            color: var(--text-primary);
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 2rem;
+            transition: all 0.3s;
+        }
+
+        .feature-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-4px);
+            box-shadow: var(--shadow);
+        }
+
+        .feature-card h3 {
+            font-size: 1.4rem;
+            color: var(--accent);
+            margin-bottom: 1rem;
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .applications {
+            padding: 4rem 2rem;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .applications-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .applications h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            color: var(--text-primary);
+        }
+
+        .applications-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .app-item {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+        }
+
+        .app-item h4 {
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+
+        .about {
+            padding: 4rem 2rem;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .about h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            color: var(--text-primary);
+        }
+
+        .about p {
+            color: var(--text-secondary);
+            line-height: 1.8;
+            margin-bottom: 1.5rem;
+        }
+
+        .method-overview {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+
+        .method-overview h3 {
+            color: var(--accent);
+            margin-bottom: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero p {
+                font-size: 1.1rem;
+            }
+
+            .features h2, .applications h2, .about h2 {
+                font-size: 2rem;
+            }
+        }
+    </style>
 </head>
 <body>
 
 <!-- Header -->
 <header class="header">
     <div>
-        <h1>🔊 AcousticFDTD</h1>
-        <span class="subtitle">3D Acoustic Wave Propagation Simulator — Finite-Difference Time-Domain</span>
+        <h1>AcousticFDTD</h1>
+        <span class="subtitle">Professional 3D Acoustic Wave Simulator</span>
     </div>
     <div class="header-links">
-        <a href="https://github.com/dot-gabriel-ferrer/AcousticFDTD" target="_blank">⭐ GitHub</a>
-        <a href="https://github.com/dot-gabriel-ferrer/AcousticFDTD#mathematical-background" target="_blank">📐 Theory</a>
+        <a href="index.html">Home</a>
+        <a href="simulator.html">Simulator</a>
+        <a href="documentation.html">Documentation</a>
+        <a href="https://github.com/dot-gabriel-ferrer/AcousticFDTD" target="_blank">GitHub</a>
     </div>
 </header>
 
-<div class="main-container">
+<!-- Hero Section -->
+<section class="hero">
+    <h1>AcousticFDTD</h1>
+    <p>
+        A professional-grade 3D acoustic wave propagation simulator implementing the Finite-Difference Time-Domain (FDTD) method.
+        Designed for researchers, engineers, and acousticians working in room acoustics, underwater acoustics, and bioacoustics.
+    </p>
+    <div class="cta-buttons">
+        <a href="simulator.html" class="btn btn-primary">Launch Simulator</a>
+        <a href="documentation.html" class="btn">Read Documentation</a>
+        <a href="https://github.com/dot-gabriel-ferrer/AcousticFDTD" target="_blank" class="btn">View on GitHub</a>
+    </div>
+</section>
 
-    <!-- Sidebar Controls -->
-    <aside class="sidebar">
-
-        <!-- Room Parameters -->
-        <div class="panel">
-            <div class="panel-title"><span class="icon">🏠</span> Room</div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>X [m]</label>
-                    <input type="number" id="dimX" class="sim-input" value="1.0" min="0.2" max="5" step="0.1">
-                </div>
-                <div class="form-group">
-                    <label>Y [m]</label>
-                    <input type="number" id="dimY" class="sim-input" value="1.0" min="0.2" max="5" step="0.1">
-                </div>
-                <div class="form-group">
-                    <label>Z [m]</label>
-                    <input type="number" id="dimZ" class="sim-input" value="1.0" min="0.2" max="5" step="0.1">
-                </div>
-            </div>
-            <div class="form-row two-col">
-                <div class="form-group">
-                    <label>Resolution [m]</label>
-                    <input type="number" id="dres" class="sim-input" value="0.05" min="0.01" max="0.5" step="0.01">
-                </div>
-                <div class="form-group">
-                    <label>Sim Time [s]</label>
-                    <input type="number" id="simTime" class="sim-input" value="0.02" min="0.001" max="1" step="0.001">
-                </div>
-            </div>
+<!-- Features Section -->
+<section class="features">
+    <h2>Key Features</h2>
+    <div class="feature-grid">
+        <div class="feature-card">
+            <h3>3D Visualization</h3>
+            <p>
+                Interactive 3D environment with real-time visualization of acoustic pressure fields.
+                Rotate, zoom, and navigate through the simulation space with intuitive controls optimized for both desktop and mobile devices.
+            </p>
         </div>
 
-        <!-- Medium Parameters -->
-        <div class="panel">
-            <div class="panel-title"><span class="icon">🌊</span> Medium</div>
-            <div class="form-row two-col">
-                <div class="form-group">
-                    <label>Material</label>
-                    <select id="medium" class="sim-input">
-                        <option value="air" selected>Air (343 m/s)</option>
-                        <option value="water">Water (1493 m/s)</option>
-                        <option value="saltwater">Saltwater (1533 m/s)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Boundary</label>
-                    <select id="boundary" class="sim-input">
-                        <option value="reflective" selected>Reflective</option>
-                        <option value="absorbing">Absorbing</option>
-                        <option value="periodic">Periodic</option>
-                    </select>
-                </div>
-            </div>
-            <div class="form-row single">
-                <div class="form-group">
-                    <label>Wall Reflection: <span id="wallRefVal">1.0</span></label>
-                    <input type="range" id="wallReflection" class="sim-input" value="1.0" min="0" max="1" step="0.05">
-                </div>
-            </div>
+        <div class="feature-card">
+            <h3>Multiple Microphones</h3>
+            <p>
+                Add and configure multiple microphones with realistic frequency response patterns including omnidirectional, cardioid, and figure-8 polar patterns.
+                Control position and orientation for accurate directional analysis.
+            </p>
         </div>
 
-        <!-- Source Parameters -->
-        <div class="panel">
-            <div class="panel-title"><span class="icon">📡</span> Source</div>
-            <div class="form-row two-col">
-                <div class="form-group">
-                    <label>Frequency [Hz]</label>
-                    <input type="number" id="srcFreq" class="sim-input" value="500" min="10" max="20000" step="10">
-                </div>
-                <div class="form-group">
-                    <label>Amplitude [Pa]</label>
-                    <input type="number" id="srcAmp" class="sim-input" value="1.0" min="0.001" max="100" step="0.1">
-                </div>
-            </div>
-            <div class="form-row single">
-                <div class="form-group">
-                    <label>Type</label>
-                    <select id="srcType" class="sim-input">
-                        <option value="sine" selected>Sinusoidal</option>
-                        <option value="impulse">Impulse (Dirac δ)</option>
-                        <option value="gaussian">Gaussian Pulse</option>
-                    </select>
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>X [m]</label>
-                    <input type="number" id="srcX" class="sim-input" value="0.5" min="0" max="5" step="0.05">
-                </div>
-                <div class="form-group">
-                    <label>Y [m]</label>
-                    <input type="number" id="srcY" class="sim-input" value="0.5" min="0" max="5" step="0.05">
-                </div>
-                <div class="form-group">
-                    <label>Z [m]</label>
-                    <input type="number" id="srcZ" class="sim-input" value="0.5" min="0" max="5" step="0.05">
-                </div>
-            </div>
+        <div class="feature-card">
+            <h3>Advanced Algorithms</h3>
+            <p>
+                Choose from multiple propagation algorithms optimized for different scenarios.
+                FDTD for general purpose, and specialized algorithms for large spaces and long-duration simulations.
+            </p>
         </div>
 
-        <!-- Microphone Parameters -->
-        <div class="panel">
-            <div class="panel-title"><span class="icon">🎤</span> Microphone</div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>X [m]</label>
-                    <input type="number" id="micX" class="sim-input" value="0.2" min="0" max="5" step="0.05">
-                </div>
-                <div class="form-group">
-                    <label>Y [m]</label>
-                    <input type="number" id="micY" class="sim-input" value="0.2" min="0" max="5" step="0.05">
-                </div>
-                <div class="form-group">
-                    <label>Z [m]</label>
-                    <input type="number" id="micZ" class="sim-input" value="0.5" min="0" max="5" step="0.05">
-                </div>
-            </div>
+        <div class="feature-card">
+            <h3>Multiple Media</h3>
+            <p>
+                Simulate acoustic propagation in air, water, saltwater, or custom media.
+                Support for underwater acoustics with specialized algorithms for aquatic environments.
+            </p>
         </div>
 
-        <!-- View Controls -->
-        <div class="panel">
-            <div class="panel-title"><span class="icon">👁️</span> Visualization</div>
-            <div class="form-row two-col">
-                <div class="form-group">
-                    <label>View Plane</label>
-                    <select id="viewPlane">
-                        <option value="xy" selected>XY (top)</option>
-                        <option value="xz">XZ (front)</option>
-                        <option value="yz">YZ (side)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Slice: <span id="sliceVal">0</span></label>
-                    <input type="range" id="viewSlice" value="0" min="0" max="20" step="1">
-                </div>
-            </div>
-            <div class="form-row two-col">
-                <div class="form-group">
-                    <label>Color Scale: <span id="colorScaleVal">1.0</span></label>
-                    <input type="range" id="colorScale" value="1.0" min="0.1" max="10" step="0.1">
-                </div>
-                <div class="form-group">
-                    <label>Steps/Frame: <span id="stepsVal">5</span></label>
-                    <input type="range" id="stepsPerFrame" value="5" min="1" max="50" step="1">
-                </div>
-            </div>
+        <div class="feature-card">
+            <h3>Geometric Import</h3>
+            <p>
+                Import complex geometries from Blender for realistic architectural and environmental simulations.
+                Define walls, obstacles, and reflective surfaces within the simulation environment.
+            </p>
         </div>
 
-        <!-- Controls -->
-        <div class="panel">
-            <div class="panel-title"><span class="icon">▶️</span> Simulation</div>
-            <div class="btn-group">
-                <button id="btnStart" class="btn btn-primary">▶ Start</button>
-                <button id="btnPause" class="btn" disabled>⏸ Pause</button>
-                <button id="btnReset" class="btn btn-danger">↺ Reset</button>
-            </div>
-            <div class="btn-group" style="margin-top: 0.5rem">
-                <button id="btnPlayAudio" class="btn btn-success" disabled>🔊 Play</button>
-                <button id="btnExportWav" class="btn" disabled>💾 WAV</button>
-            </div>
+        <div class="feature-card">
+            <h3>Comprehensive Analysis</h3>
+            <p>
+                Extensive post-processing tools including source pressure analysis, raw and processed microphone signals,
+                FFT spectra, SPL measurements, and acoustic impedance calculations.
+            </p>
         </div>
 
-    </aside>
-
-    <!-- Main Content -->
-    <main class="content">
-
-        <!-- Status Bar -->
-        <div class="status-bar">
-            <div id="infoPanel" class="info">
-                Configure parameters and press <strong>Start</strong> to begin simulation.
-            </div>
-            <div class="progress-container">
-                <div class="progress-track">
-                    <div id="progressBar" class="progress-fill"></div>
-                </div>
-                <div id="stepDisplay" class="step-label">Step: 0 / 0</div>
-            </div>
+        <div class="feature-card">
+            <h3>Export Capabilities</h3>
+            <p>
+                Export simulation results in multiple formats including WAV audio files, CSV data, and visualization snapshots.
+                Background processing with downloadable results upon completion.
+            </p>
         </div>
 
-        <!-- Visualization Grid -->
-        <div class="viz-grid">
-
-            <!-- Pressure Field -->
-            <div class="viz-panel full-width">
-                <div class="viz-header">
-                    Pressure Field — 2D Slice
-                    <span class="badge">LIVE</span>
-                </div>
-                <div class="viz-body">
-                    <canvas id="fieldCanvas" width="600" height="600"></canvas>
-                </div>
-                <div class="legend">
-                    <div class="legend-item">
-                        <div class="legend-dot" style="background: #0000ff"></div>
-                        <span>− Pressure</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-dot" style="background: #000000"></div>
-                        <span>Zero</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-dot" style="background: #ff0000"></div>
-                        <span>+ Pressure</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-dot" style="background: #ffd700"></div>
-                        <span>Source</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-dot" style="background: #00ff88"></div>
-                        <span>Microphone</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Time Series -->
-            <div class="viz-panel">
-                <div class="viz-header">
-                    Microphone — Time Series
-                    <span class="badge" style="background: #00d4ff">MIC</span>
-                </div>
-                <div class="viz-body">
-                    <canvas id="timeCanvas" width="500" height="200"></canvas>
-                </div>
-            </div>
-
-            <!-- FFT Spectrum -->
-            <div class="viz-panel">
-                <div class="viz-header">
-                    Frequency Spectrum — FFT
-                    <span class="badge" style="background: #ff6b6b">FFT</span>
-                </div>
-                <div class="viz-body">
-                    <canvas id="fftCanvas" width="500" height="200"></canvas>
-                </div>
-            </div>
-
+        <div class="feature-card">
+            <h3>Preset Scenarios</h3>
+            <p>
+                Pre-configured scenarios for bioacoustics research including cetacean phonation organs and avian syrinx models
+                based on published research for educational and scientific applications.
+            </p>
         </div>
 
-    </main>
+        <div class="feature-card">
+            <h3>High Performance</h3>
+            <p>
+                Optimized computation using Web Workers and parallelization strategies for efficient simulation of large domains
+                and extended time periods entirely in your browser.
+            </p>
+        </div>
+    </div>
+</section>
 
-</div>
+<!-- Applications Section -->
+<section class="applications">
+    <div class="applications-content">
+        <h2>Applications</h2>
+        <p style="text-align: center; color: var(--text-secondary); max-width: 800px; margin: 0 auto 2rem;">
+            AcousticFDTD is designed for a wide range of professional and research applications in acoustics and wave propagation.
+        </p>
+        <div class="applications-grid">
+            <div class="app-item">
+                <h4>Room Acoustics</h4>
+                <p>Analysis of concert halls, studios, auditoriums, and architectural spaces</p>
+            </div>
+            <div class="app-item">
+                <h4>Underwater Acoustics</h4>
+                <p>Marine mammal communication, sonar systems, and oceanic sound propagation</p>
+            </div>
+            <div class="app-item">
+                <h4>Bioacoustics</h4>
+                <p>Animal vocalization, phonation organs, and biological sound production mechanisms</p>
+            </div>
+            <div class="app-item">
+                <h4>Audio Engineering</h4>
+                <p>Microphone placement, room impulse responses, and acoustic treatment design</p>
+            </div>
+            <div class="app-item">
+                <h4>Education & Research</h4>
+                <p>Teaching wave physics, acoustics principles, and computational methods</p>
+            </div>
+            <div class="app-item">
+                <h4>Product Development</h4>
+                <p>Speaker design, noise control, and acoustic product optimization</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- About Section -->
+<section class="about">
+    <h2>About the Method</h2>
+    <p>
+        The Finite-Difference Time-Domain (FDTD) method is a well-established numerical technique for solving
+        partial differential equations describing wave propagation. This implementation solves the linearized
+        acoustic wave equations in three dimensions using a staggered-grid leapfrog scheme.
+    </p>
+
+    <div class="method-overview">
+        <h3>Mathematical Foundation</h3>
+        <p style="color: var(--text-secondary); line-height: 1.8;">
+            The simulator solves the coupled first-order acoustic equations relating particle velocity and pressure
+            through spatial and temporal derivatives. The staggered grid approach ensures numerical stability
+            while maintaining second-order accuracy in both space and time.
+        </p>
+        <p style="color: var(--text-secondary); line-height: 1.8; margin-top: 1rem;">
+            Stability is guaranteed through the Courant-Friedrichs-Lewy (CFL) condition, with automatic validation
+            and warnings for anti-aliasing to prevent numerical artifacts.
+        </p>
+    </div>
+
+    <p>
+        For detailed mathematical derivations, implementation details, and validation studies,
+        please refer to the <a href="documentation.html" style="color: var(--accent);">technical documentation</a>.
+    </p>
+
+    <p style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--border);">
+        <strong>Author:</strong> Elías Gabriel Ferrer Jorge<br>
+        <strong>Project:</strong> Acoustic Simulations Research<br>
+        <strong>License:</strong> MIT License
+    </p>
+</section>
 
 <!-- Footer -->
 <footer class="footer">
-    AcousticFDTD v1.0 — 3D Acoustic Wave Simulator · FDTD Method ·
+    AcousticFDTD — Professional 3D Acoustic Wave Simulator · FDTD Method ·
     Author: Elías Gabriel Ferrer Jorge ·
-    <a href="https://github.com/dot-gabriel-ferrer/AcousticFDTD" style="color: var(--accent)">GitHub</a>
+    <a href="https://github.com/dot-gabriel-ferrer/AcousticFDTD" style="color: var(--accent)">GitHub Repository</a>
 </footer>
-
-<!-- Scripts -->
-<script src="js/fdtd-solver.js"></script>
-<script src="js/visualizer.js"></script>
-<script src="js/audio-engine.js"></script>
-<script src="js/app.js"></script>
-
-<!-- Wall reflection value display -->
-<script>
-    document.getElementById("wallReflection").addEventListener("input", function () {
-        document.getElementById("wallRefVal").textContent = parseFloat(this.value).toFixed(2);
-    });
-</script>
 
 </body>
 </html>

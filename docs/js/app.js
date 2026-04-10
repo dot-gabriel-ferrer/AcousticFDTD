@@ -13,6 +13,7 @@ class App {
     constructor() {
         this.solver = null;
         this.visualizer = null;
+        this.visualizer3D = null;
         this.audio = new AudioEngine();
         this.animFrameId = null;
         this.running = false;
@@ -101,6 +102,14 @@ class App {
     _initDefault() {
         this._createSolver();
         this.visualizer = new Visualizer(this.fieldCanvas, this.timeCanvas, this.fftCanvas);
+
+        // Initialize 3D visualizer if container exists
+        const viewer3DContainer = document.getElementById("viewer3D");
+        if (viewer3DContainer && typeof Visualizer3D !== 'undefined') {
+            this.visualizer3D = new Visualizer3D(viewer3DContainer);
+            this._update3DView();
+        }
+
         this._updateInfo();
         this._renderFrame();
     }
@@ -220,6 +229,7 @@ class App {
     reset() {
         this.pause();
         this._createSolver();
+        this._update3DView();
         this._updateInfo();
         this._renderFrame();
         this.stepDisplay.textContent = "Step: 0 / " + this.maxSteps;
@@ -333,6 +343,40 @@ class App {
     _disableInputs(disabled) {
         const inputs = document.querySelectorAll(".sim-input");
         inputs.forEach(inp => { inp.disabled = disabled; });
+    }
+
+    /** Update 3D visualization with current solver state */
+    _update3DView() {
+        if (!this.visualizer3D || !this.solver) return;
+
+        // Update room dimensions
+        const dims = [
+            parseFloat(this.inpDimX.value),
+            parseFloat(this.inpDimY.value),
+            parseFloat(this.inpDimZ.value)
+        ];
+        this.visualizer3D.setRoomDimensions(dims);
+
+        // Update sources
+        const sources = this.solver.sources.map(src => ({
+            position: [
+                parseFloat(this.inpSrcX.value),
+                parseFloat(this.inpSrcY.value),
+                parseFloat(this.inpSrcZ.value)
+            ]
+        }));
+        this.visualizer3D.setSources(sources);
+
+        // Update microphones
+        const microphones = [{
+            position: [
+                parseFloat(this.inpMicX.value),
+                parseFloat(this.inpMicY.value),
+                parseFloat(this.inpMicZ.value)
+            ],
+            pattern: 'omni'
+        }];
+        this.visualizer3D.setMicrophones(microphones);
     }
 }
 
