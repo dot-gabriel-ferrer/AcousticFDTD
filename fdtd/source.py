@@ -1,110 +1,132 @@
-#coding:utf-8
-'''
-TFG Acoustics Simulations
+# coding: utf-8
+"""
+AcousticFDTD - Source Module
 
-Sources of sound
+Defines punctual isotropic sound sources for the FDTD simulation.
+Supports sinusoidal tones, Dirac delta impulses, and custom waveforms.
 
-@author: Elías Gabriel Ferrer Jorge
-'''
+Author: Elías Gabriel Ferrer Jorge
+"""
+
 import numpy as np
 from scipy import signal
-from pathlib import Path
-import fdtd.room as ro
-import fdtd.counter as co
 
-__VERSION__       = '0.0.0-alpha'
-TITLE             = 'SOURCE_FDTD'
-ROOM_FILE_PATH    = Path('../data/input/source_input.wav')
-OUTPUT_FILE_PATH  = Path('../data/output/source_output.wav')
+__VERSION__ = '1.0.0'
+
 
 class Source:
-	'''
-	Punctual isotropic Sources of pressure
-	'''
-	def __init__(self, amplitude = 20*10**-6, sample_rate=44100, t0 = 0, duration=1, frequency=980, phase=0, coords_0 = [0.5,0.5,0.5], v = [0.,0.,0.]):
-		'''
-		INPUTS:
-			sample_rate -> (int)     Samples per second [samples/s]
-			t0          -> (float)   Initial time of source [s]
-			duration    -> (float)   Duration of source [s]
-			frequency   -> (float)   Frequency of tone [Hz]
-			phase       -> (float)   Phase of wave of source [rad]
-			coords      -> (ndarray) Coordinates (x,y,z) of source [m]
+    """Punctual isotropic pressure source.
 
-		'''
-		self.type_source   = 'Punctual isotropic Source of pressure'
-		self.amplitude     = amplitude
-		self.sample_rate   = sample_rate
-		self.frequency     = frequency
-		self.t0            = t0
-		self.duration      = duration
-		self.phase         = phase
+    Generates a time-domain signal (tone) that is injected into the
+    FDTD pressure grid at the source coordinates.
 
-		self.coords_0      = np.array(coords_0)
-		self.coords_n      = np.array(coords_0)
+    Args:
+        amplitude: Peak pressure amplitude in [Pa]. Default 1.0.
+        sample_rate: Sample rate in [samples/s]. Default 44100.
+        t0: Start time offset in [s]. Default 0.0.
+        duration: Duration of the source signal in [s]. Default 1.0.
+        frequency: Frequency of the sinusoidal tone in [Hz]. Default 980.
+        phase: Phase offset in [rad]. Default 0.0.
+        coords_0: Initial position [x, y, z] in [m]. Default [0.5, 0.5, 0.5].
+        source_type: Type of source ('soft' or 'hard'). Default 'soft'.
+    """
 
-		self.v             = np.array(v)
+    def __init__(self, amplitude=1.0, sample_rate=44100, t0=0.0,
+                 duration=1.0, frequency=980.0, phase=0.0,
+                 coords_0=None, source_type='soft'):
+        if coords_0 is None:
+            coords_0 = [0.5, 0.5, 0.5]
 
-		self.t             = np.arange(self.t0,self.duration+self.t0,1./self.sample_rate)
-		self.tone          = self.amplitude * np.sin(2*np.pi * self.frequency*self.t + self.phase)
+        self.type_source = 'Punctual isotropic source of pressure'
+        self.source_type = source_type  # 'soft' (additive) or 'hard' (override)
+        self.amplitude = float(amplitude)
+        self.sample_rate = int(sample_rate)
+        self.frequency = float(frequency)
+        self.t0 = float(t0)
+        self.duration = float(duration)
+        self.phase = float(phase)
+        self.coords_0 = np.array(coords_0, dtype=float)
+        self.coords_n = np.array(coords_0, dtype=float)
 
-	def __call__(self, t):
-		''' This obtain pressure of source at its own time t [s]
-		'''
-		self.coords_n = self.coords_0 + self.v * t
-		return self.amplitude * np.sin(2 * np.pi * self.frequency * t + self.phase)
+        self._generate_tone()
 
-	def retone(self,duration,dt):
-		'''
-		'''
-		self.sample_rate = 1/dt
-		self.duration = duration
-		self.t             = np.arange(self.t0,self.duration+self.t0,1./self.sample_rate)
-		self.tone = self.amplitude * np.sin(2*np.pi * self.frequency*self.t + self.phase)
+    def _generate_tone(self):
+        """Generate the sinusoidal tone array."""
+        self.t = np.arange(0, self.duration, 1.0 / self.sample_rate)
+        self.tone = self.amplitude * np.sin(
+            2 * np.pi * self.frequency * self.t + self.phase
+        )
 
-	def create_v_in_t(self):
-		'''
-		'''
-		if len(np.shape(self.v)) > 1 and len(np.shape(self.t)) > 0:
-			if len(self.v)<len(self.t):
-				count = len(self.v)*(self.t[1]-self.t[0])
-				n = 0
-				v_list = []
-				for t in self.t:
-					if  t<count:
-						v_list.append(self.v[n])
-					else:
-						count += len(self.v)*(self.t[1]-self.t[0])
-						if n==len(self.v)-1:
-							v_list.append(self.v[n])
-						else:
-							n+=1
-							v_list.append(self.v[n])
+    def __call__(self, t):
+        """Get pressure value at time t.
 
-				self.v = np.array(v_list)
+        Args:
+            t: Time in seconds.
 
-	def d_dirac(self,dt):
-		'''
-		Dirac's delta
-			d(x-n)
-		'''
-		n = int(self.t0/dt)
-		x = int(self.duration/dt+1)
-		self.tone = signal.unit_impulse(x,n)
-		return signal.unit_impulse(x,n)
+        Returns:
+            Pressure value at time t.
+        """
+        return self.amplitude * np.sin(
+            2 * np.pi * self.frequency * t + self.phase
+        )
 
-	def __str__(self):
-		'''Information of object source
-		'''
-		cad = '\n'
-		cad+= '+' + '-'*80 + '+\n'
-		cad+= '|' + ' '*37  + 'Source' + ' '*37 + '|\n'
-		cad+= '+'+'-'*80+'+\n'
-		cad+= self.type_source + '\n'
-		cad+= 'Sample rate: %s [samples/s]\n' %(str(self.sample_rate))
-		cad+= 'Frequency of source: %s [Hz]\n' %(str(self.frequency))
-		cad+= 'Duration: %s [s]\n' %(str(self.duration))
-		cad+= 'Phase: %s [rad]\n' %(str(self.phase))
-		cad+= 'Initial coordinates (x,y,z): %s [m]\n' %(str(self.coords_0))
-		cad+= '-'*80 + '\n\n'
-		return(cad)
+    def retone(self, duration, dt):
+        """Re-generate tone to match simulation time step.
+
+        Args:
+            duration: Total simulation duration in [s].
+            dt: Simulation time step in [s].
+        """
+        self.sample_rate = 1.0 / dt
+        self.duration = duration
+        self._generate_tone()
+
+    def d_dirac(self, dt):
+        """Create a Dirac delta impulse source.
+
+        Args:
+            dt: Time step for determining impulse position.
+
+        Returns:
+            Unit impulse array.
+        """
+        n = int(self.t0 / dt) if self.t0 > 0 else 0
+        x = len(self.t)
+        self.tone = signal.unit_impulse(x, min(n, x - 1))
+        return self.tone
+
+    def gaussian_pulse(self, dt, bandwidth=0.5):
+        """Create a Gaussian pulse source.
+
+        Args:
+            dt: Time step.
+            bandwidth: Fractional bandwidth. Default 0.5.
+
+        Returns:
+            Gaussian modulated sinusoidal pulse.
+        """
+        n_steps = len(self.t)
+        t_center = n_steps // 2
+        sigma = bandwidth / (2 * np.pi * self.frequency)
+        t_arr = np.arange(n_steps) * dt
+        t_c = t_center * dt
+        self.tone = self.amplitude * np.exp(
+            -((t_arr - t_c) ** 2) / (2 * sigma ** 2)
+        ) * np.sin(2 * np.pi * self.frequency * t_arr + self.phase)
+        return self.tone
+
+    def __str__(self):
+        """Pretty-print source information."""
+        cad = '\n'
+        cad += '+' + '-' * 80 + '+\n'
+        cad += '|' + ' ' * 37 + 'Source' + ' ' * 37 + '|\n'
+        cad += '+' + '-' * 80 + '+\n'
+        cad += '%s (%s)\n' % (self.type_source, self.source_type)
+        cad += 'Sample rate: %.2f [samples/s]\n' % self.sample_rate
+        cad += 'Frequency: %.2f [Hz]\n' % self.frequency
+        cad += 'Amplitude: %.6f [Pa]\n' % self.amplitude
+        cad += 'Duration: %.4f [s]\n' % self.duration
+        cad += 'Phase: %.4f [rad]\n' % self.phase
+        cad += 'Position (x,y,z): %s [m]\n' % str(self.coords_0)
+        cad += '-' * 80 + '\n\n'
+        return cad

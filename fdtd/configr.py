@@ -1,81 +1,82 @@
-#coding:utf-8
-'''
-TFG Acoustics simulations
+# coding: utf-8
+"""
+AcousticFDTD - Configuration Reader Module
 
-CLASS XML_CONFIG_READER
+Reads simulation parameters from XML configuration files.
 
-@author: Elías Gabriel Ferrer Jorge
-'''
+Author: Elías Gabriel Ferrer Jorge
+"""
 
-import xml.etree.cElementTree as ET
+import xml.etree.ElementTree as ET
+
+__VERSION__ = '1.0.0'
+
 
 class Configr:
-	'''Config file reader from test_fdtd folder in path.
-	'''
-	def __init__(self,filename='config.xml'):
-		'''
-		'''
-		self.filename = filename
-		self.tree = ET.ElementTree(file='test_fdtd/' + self.filename)
-		self.root = self.tree.getroot()
+    """XML configuration file reader for FDTD simulation parameters.
 
-	def experiment(self,filename='experiments.xml'):
-		'''Read data of experiments.xml
+    Reads room dimensions, source parameters, and simulation settings
+    from an XML config file.
 
-		    Example:
+    Args:
+        filename: Name of the XML config file. Default 'config.xml'.
+        basepath: Base directory containing the config file. Default 'test_fdtd'.
+    """
 
-		    If you want load test_1 data input test_number = 1
-		'''
-		self.test_number = test_number
-		self.test_x = self.root[self.test_number-1]
+    def __init__(self, filename='config.xml', basepath='test_fdtd'):
+        self.filename = filename
+        self.basepath = basepath
+        filepath = basepath + '/' + filename
+        self.tree = ET.parse(filepath)
+        self.root = self.tree.getroot()
+        self.test_number = None
 
-		self.dimx = float(self.test_x.find('room').get('dimx'))
-		self.dimy = float(self.test_x.find('room').get('dimy'))
-		self.dimz = float(self.test_x.find('room').get('dimz'))
-		self.dims = [self.dimx,self.dimy,self.dimz]
+    def __call__(self, test_number):
+        """Load configuration for a specific test case.
 
-		self.pinix = float(self.test_x.find('room').get('pinix'))
-		self.piniy = float(self.test_x.find('room').get('piniy'))
-		self.piniz = float(self.test_x.find('room').get('piniz'))
-		self.pini = [self.pinix,self.piniy,self.piniz]
+        Args:
+            test_number: Test number (1-indexed) to load.
+        """
+        self.test_number = test_number
+        test_list = self.root[0]  # <lista_de_tests>
+        self.test_x = test_list[test_number - 1]
 
-		self.sample_rate = int(self.test_x.find('source').get('sample_rate'))
-		self.source_duration = float(self.test_x.find('source').get('duration'))
-		self.frequency = float(self.test_x.find('source').get('frequency'))
-		self.phase = float(self.test_x.find('source').get('phase'))
-		self.sim_time = float(self.test_x.find('sim').get('duration'))
+        # Room parameters
+        room_elem = self.test_x.find('room')
+        self.dimx = float(room_elem.get('dimx'))
+        self.dimy = float(room_elem.get('dimy'))
+        self.dimz = float(room_elem.get('dimz'))
+        self.dims = [self.dimx, self.dimy, self.dimz]
 
-	def __call__(self,test_number):
-		'''Read data of config.xml
+        dres = room_elem.get('dres')
+        self.dres = float(dres) if dres else 0.1
 
-		    Example:
+        self.pinix = float(room_elem.get('pinix', '0'))
+        self.piniy = float(room_elem.get('piniy', '0'))
+        self.piniz = float(room_elem.get('piniz', '0'))
+        self.pini = [self.pinix, self.piniy, self.piniz]
 
-		    If you want load test_1 data input test_number = 1
-		'''
-		
-		self.test_number = test_number
-		self.test_x = self.root[self.test_number-1]
+        # Source parameters
+        source_elem = self.test_x.find('source')
+        self.sample_rate = int(source_elem.get('sample_rate'))
+        self.source_duration = float(source_elem.get('duration'))
+        self.frequency = float(source_elem.get('frequency'))
+        self.phase = float(source_elem.get('phase'))
 
-		self.dimx = float(self.test_x.find('room').get('dimx'))
-		self.dimy = float(self.test_x.find('room').get('dimy'))
-		self.dimz = float(self.test_x.find('room').get('dimz'))
-		self.dims = [self.dimx,self.dimy,self.dimz]
+        # Simulation parameters
+        sim_elem = self.test_x.find('sim')
+        self.sim_time = float(sim_elem.get('duration'))
 
-		self.pinix = float(self.test_x.find('room').get('pinix'))
-		self.piniy = float(self.test_x.find('room').get('piniy'))
-		self.piniz = float(self.test_x.find('room').get('piniz'))
-		self.pini = [self.pinix,self.piniy,self.piniz]
-
-		self.sample_rate = int(self.test_x.find('source').get('sample_rate'))
-		self.source_duration = float(self.test_x.find('source').get('duration'))
-		self.frequency = float(self.test_x.find('source').get('frequency'))
-		self.phase = float(self.test_x.find('source').get('phase'))
-		self.sim_time = float(self.test_x.find('sim').get('duration'))
-
-		#print(self.__str__())
-
-	def __str__(self):
-		cad = '+' + '-'*80 + '+'
-		cad+= 'Readed: ' + self.filename
-		cad+= 'Test_%s loaded' %(self.test_number)
-		cad+= '+' + '-'*80 + '+'
+    def __str__(self):
+        """Pretty-print loaded configuration."""
+        cad = '+' + '-' * 80 + '+\n'
+        cad += 'Config file: %s\n' % self.filename
+        if self.test_number is not None:
+            cad += 'Test #%d loaded\n' % self.test_number
+            cad += 'Room: (%.2f x %.2f x %.2f) m, dres=%.3f m\n' % (
+                self.dimx, self.dimy, self.dimz, self.dres)
+            cad += 'Source: f=%.1f Hz, duration=%.2f s\n' % (
+                self.frequency, self.source_duration)
+            cad += 'Simulation time: %.2f s\n' % self.sim_time
+        cad += '+' + '-' * 80 + '+\n'
+        return cad

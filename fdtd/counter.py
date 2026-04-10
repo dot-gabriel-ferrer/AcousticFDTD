@@ -1,32 +1,42 @@
-#coding:utf-8
-'''
-TFG Acoustics Simulations
+# coding: utf-8
+"""
+AcousticFDTD - Counter Module
 
-COUNTER CLASS
+Manages the ping-pong buffer indices for the FDTD leapfrog time-stepping scheme.
+Uses two alternating time slots (n and n_1) to avoid storing the full time history.
 
-@author Elías Gabriel Ferrer Jorge
-'''
+Author: Elías Gabriel Ferrer Jorge
+"""
 
-import numpy as np
 
 class Counter:
-	'''
-	'''
-	def __init__(self):
-		self.n = 0
-		self.n_1 = 1
+    """Ping-pong counter for alternating between two time-level buffers.
 
-		self.cont = 0
+    The FDTD scheme needs values at time n and n+1. Instead of allocating
+    a full time history, we use two buffer slots and swap indices each step.
 
-	def swap(self):
-		'''Swap counter values
-			n_1 -> n
-			n   -> n_1
-		'''
-		self.n+=1
-		self.n_1+=1
+    Attributes:
+        n (int): Current time-level index (0 or 1).
+        n_1 (int): Next time-level index (0 or 1).
+        cont (int): Running step count (monotonically increasing).
+    """
 
-		self.n = self.n%2
-		self.n_1 = self.n_1%2
+    def __init__(self):
+        self.n = 0
+        self.n_1 = 1
+        self.cont = 0
 
-		self.cont +=1
+    def swap(self):
+        """Swap current/next buffer indices and increment step counter.
+
+        After swap: old n_1 becomes new n, old n becomes new n_1.
+        """
+        self.n = (self.n + 1) % 2
+        self.n_1 = (self.n_1 + 1) % 2
+        self.cont += 1
+
+    def reset(self):
+        """Reset counter to initial state."""
+        self.n = 0
+        self.n_1 = 1
+        self.cont = 0

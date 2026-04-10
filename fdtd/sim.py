@@ -1,305 +1,338 @@
-#coding:utf-8
-'''
-TFG Acoustics Simulations
+# coding: utf-8
+"""
+AcousticFDTD - Simulation Module
 
-FDTD 3D
+Core FDTD (Finite-Difference Time-Domain) solver for 3D acoustic wave
+propagation. Implements the leapfrog staggered-grid scheme with support
+for reflective and absorbing (PML-like) boundary conditions.
 
-@author: Elías Gabriel Ferrer Jorge
-'''
+The linearised acoustic equations solved are:
+    ∂v/∂t = -(1/ρ) ∇p
+    ∂p/∂t = -ρ c² ∇·v
+
+Author: Elías Gabriel Ferrer Jorge
+"""
 
 import numpy as np
-import pickle
-from pathlib import Path
-import time
-import fdtd.datafiles as fl
-import fdtd.counter as co
-__VERSION__       = '0.0.0-alpha'
-TITLE             = 'SIM_FDTD'
-ROOM_FILE_PATH    = Path('../data/input/sim_input.csv')
-OUTPUT_FILE_PATH  = Path('../data/output/sim_output.csv')
+import time as timer_module
+from fdtd.counter import Counter
 
+__VERSION__ = '1.0.0'
+
+# Status codes
 SIM_NO_ERR = 0
 SIM_ERR_FREQ = 1
 SIM_ERR_RES = 2
 SIM_ERR_DIMS = 4
 
+# Boundary condition types
+BC_REFLECTIVE = 'reflective'
+BC_ABSORBING = 'absorbing'
+BC_PERIODIC = 'periodic'
+
 
 class Sim:
-	''' Acoustic propagation solver (FDTD Method)
-	'''
-	def __init__(self, room, medium, sources, micros, t):
-		'''Initialite Sim with Source
-		INPUTS:
+    """Acoustic FDTD solver in 3D.
 
-			room   -> fdtd.room.Room object
+    Solves the linearised acoustic wave equations on a staggered Cartesian
+    grid using the leapfrog time-stepping scheme. Supports multiple sources,
+    multiple microphones, and configurable boundary conditions.
 
-			source -> fdtd.source.Source object
-		'''
-		self.SIM_NO_ERR = 0
-		self.SIM_ERR_FREQ = 1
-		self.SIM_ERR_RES = 2
-		self.SIM_ERR_DIMS = 4
+    Args:
+        room: Room object defining the simulation domain.
+        medium: Medium object with material properties.
+        sources: List of Source objects.
+        micros: List of Microphone objects.
+        t: Total simulation time in seconds.
+        sc: Courant number (stability coefficient). Default 0.5.
+        boundary: Boundary condition type. Default 'reflective'.
+            - 'reflective': Perfect rigid walls (v_normal = 0).
+            - 'absorbing': Simple absorbing boundaries.
+            - 'periodic': Periodic (wrap-around) boundaries.
+        wall_reflection: Wall reflection coefficient (0 to 1). Default 1.0.
+            1.0 = perfect reflection, 0.0 = full absorption.
+    """
 
-		self.room   = room
-		self.medium = medium
+    def __init__(self, room, medium, sources, micros, t, sc=0.5,
+                 boundary=BC_REFLECTIVE, wall_reflection=1.0):
+        self.SIM_NO_ERR = SIM_NO_ERR
+        self.SIM_ERR_FREQ = SIM_ERR_FREQ
+        self.SIM_ERR_RES = SIM_ERR_RES
+        self.SIM_ERR_DIMS = SIM_ERR_DIMS
 
-		self.sources        = sources
-		self.sources_coords = (np.array([sources.coords_n for sources in self.sources])/self.room.dres).astype(int)
-		self.source_index   = 0
+        self.room = room
+        self.medium = medium
+        self.boundary = boundary
+        self.wall_reflection = float(wall_reflection)
 
-		self.micros           = micros
-		self.micros_coords    = (np.array([mics.coords for mics in self.micros])/self.room.dres).astype(int)
-		self.microphone_index = 0
+        self.sources = sources
+        self.sources_coords = np.array([
+            (np.array(s.coords_n) / self.room.dres).astype(int)
+            for s in self.sources
+        ])
 
-		self.t     = t
-		self.cadat = 0
+        self.micros = micros
+        self.micros_coords = np.array([
+            (np.array(m.coords) / self.room.dres).astype(int)
+            for m in self.micros
+        ])
 
-		self.sim_duration = 0
-		#Parameters. Courant Coefficient = (c0 * dt) * 1/2 / (np.sqrt(3) * dx)
-		self.sc = 0.5
-		self.dt = np.sqrt(3)*self.sc*self.room.dres / self.medium.c0
-		#self.sc = self.room.c0 * self.dt / self.room.dres/np.sqrt(3)
+        self.t = float(t)
+        self.cadat = 0.0
+        self.sim_duration = 0.0
 
-		# if self.t > self.sc:
-		# 	self.status = 1 #
-		# 	self.t = self.sc
+        # Courant coefficient and time step
+        # CFL condition: sc = c0 * dt / (dx * sqrt(3)) <= 1/sqrt(3)
+        self.sc = float(sc)
+        self.dt = np.sqrt(3) * self.sc * self.room.dres / self.medium.c0
 
-		self.counter = co.Counter()
-		self.save_status = 0
-		#self.cprv = self.room.ro * self.room.cr**2 * self.room.c0 * self.sc
+        self.counter = Counter()
+        self.save_status = 0
 
-		#Data p,vx,vy,vz,ro,cprv
-		self.pvro = np.zeros((2,6,self.room.dims[0],self.room.dims[1],self.room.dims[2]),dtype=float)
+        # Allocate field arrays: pvro[2_time_levels, 6_fields, Nx, Ny, Nz]
+        # Fields: [p, vx, vy, vz, rho, cprv]
+        nx, ny, nz = self.room.dims
+        self.pvro = np.zeros((2, 6, nx, ny, nz), dtype=float)
 
-		self.pvro[:,4] = self.medium.ro
-		self.pvro[:,5] = self.pvro[:,4] * self.medium.cr**2 * self.medium.c0 * self.sc
+        # Initialize density and coupling coefficient
+        self.pvro[:, 4] = self.medium.ro
+        self.pvro[:, 5] = (
+            self.pvro[:, 4] * self.medium.cr ** 2 * self.medium.c0 * self.sc
+        )
 
-		# #Velocities
-		# self.vx = room.v
-		# self.vy = room.v
-		# self.vz = room.v
-		#
-		# #
-		# self.vxbf = room.v
-		# self.vybf = room.v
-		# self.vzbf = room.v
-		#
-		# self.pbf = room.p
-		#
-		# self.n = 0
-		# self.n_1 = 1
+        # Check simulation validity
+        self.status = SIM_NO_ERR
+        self.check_status()
 
-		# #Simulation output Data
-		# self.data_sim_p = []
-		# self.data_sim_v = []
+        # Initialize microphone buffers
+        for mic in self.micros:
+            mic.steps = int(self.t / self.dt)
+            mic.resample()
 
-		#Check data avoiding aliasing effects
-		self.status = SIM_NO_ERR
+    def init_sources(self, sources):
+        """Re-initialize the source list (e.g., after retone).
 
-		self.check_status()
+        Args:
+            sources: List of Source objects.
+        """
+        self.sources = sources
+        self.sources_coords = np.array([
+            (np.array(s.coords_n) / self.room.dres).astype(int)
+            for s in self.sources
+        ])
 
-		for mic in micros:
-			mic.steps = int(self.t/self.dt)
-			mic.resample()
+    def set_sc(self, sc):
+        """Set the Courant coefficient.
 
-	def initial_cond(self, data):
-		'''Set inital conditions of pressure and velocity meshes as final state of
-			data file or explicit data ndarray
+        Args:
+            sc: New Courant number.
+        """
+        self.sc = float(sc)
+        self.dt = np.sqrt(3) * self.sc * self.room.dres / self.medium.c0
 
-			INPUT:
-				data: filename (str) or (ndarray) with shape (t,6,dims[0],dims[1],dims[2])
+    def save(self, status):
+        """Enable or disable saving field data to files.
 
-				p    = data[-1,0]
-				vx   = data[-1,1]
-				vy   = data[-1,2]
-				vz   = data[-1,3]
-				ro   = data[-1,4]
-				cprv = data[-1,5]
-		'''
+        Args:
+            status: 0 = don't save, 1 = save each step.
+        """
+        self.save_status = status
 
-		if type(data) == str:
-			data = fl.input(data)
-		elif type(data)[1] == 6:
-			data = data
-		#Pressure
-		self.pvro[0,0] = data[-1,0]
-		#Velocities
-		self.pvro[0,1] = data[-1,1]
-		self.pvro[0,2] = data[-1,2]
-		self.pvro[0,3] = data[-1,3]
-		#Density
-		self.pvro[:,4] = data[-1,4]
-		#Cprv
-		self.pvro[:,5] = data[-1,5]
+    def _apply_boundary_conditions(self, n_1):
+        """Apply boundary conditions to the velocity and pressure fields.
 
-	# def init_sources(self):
-	# 	'''Description of position and state of source on each calculus
-	#
-	# 	INPUT:
-	#
-	# 		cord_src    -> (list) cord_src contains the coordinates (x,y,z) of source on each moment
-	# 			Example: [[x0,y0,z0], [x1,y1,z1], ...]
-	# 	_____________________________________________________________
-	# 		spwn_src    -> (listlogic, int) It contains the time information about when the source emites
-	# 			when int value is 0 source does not emite
-	# 			when int value is 1 source emites
-	# 			Example: (0,1,1,0,0,0,0,1,.....,0,0,1,0)
-	# 			'''
-	#
-	# 	self.sources_coords =self.sources_coords/self.room.dres
-	def save(self, status):
-		'''
-		INPUT
-			status = 0 -> Run simulation doesn't save datafiles
-			status = 1 -> Run simulation save datafiles
-		'''
-		self.save_status = status
+        Args:
+            n_1: Next time-level index in the ping-pong buffer.
+        """
+        if self.boundary == BC_REFLECTIVE:
+            r = self.wall_reflection
+            # Zero normal velocity at boundaries (rigid wall condition)
+            # x boundaries
+            self.pvro[n_1, 1, 0, :, :] = 0.0
+            self.pvro[n_1, 1, -1, :, :] = 0.0
+            # y boundaries
+            self.pvro[n_1, 2, :, 0, :] = 0.0
+            self.pvro[n_1, 2, :, -1, :] = 0.0
+            # z boundaries
+            self.pvro[n_1, 3, :, :, 0] = 0.0
+            self.pvro[n_1, 3, :, :, -1] = 0.0
 
-	def init__micro(self,coords_micro):
-		# self.spwn_src    = np.ones(int(self.source.duration/self.dt))
-		# self.coords_src   = np.ones([int(self.source.duration/self.dt),3])
-		#
-		# for j in np.arange(len(coords_src)):
-		# 	self.coords_src[j] = coords_src
+            # Pressure reflection at walls
+            if r < 1.0:
+                self.pvro[n_1, 0, 0, :, :] *= r
+                self.pvro[n_1, 0, -1, :, :] *= r
+                self.pvro[n_1, 0, :, 0, :] *= r
+                self.pvro[n_1, 0, :, -1, :] *= r
+                self.pvro[n_1, 0, :, :, 0] *= r
+                self.pvro[n_1, 0, :, :, -1] *= r
 
-		self.coords_micro = coords_micro
+        elif self.boundary == BC_ABSORBING:
+            # Simple first-order absorbing (Mur-like)
+            # Set boundary pressure to zero (anechoic approximation)
+            self.pvro[n_1, 0, 0, :, :] = 0.0
+            self.pvro[n_1, 0, -1, :, :] = 0.0
+            self.pvro[n_1, 0, :, 0, :] = 0.0
+            self.pvro[n_1, 0, :, -1, :] = 0.0
+            self.pvro[n_1, 0, :, :, 0] = 0.0
+            self.pvro[n_1, 0, :, :, -1] = 0.0
+            # Zero velocity at edges
+            self.pvro[n_1, 1, 0, :, :] = 0.0
+            self.pvro[n_1, 1, -1, :, :] = 0.0
+            self.pvro[n_1, 2, :, 0, :] = 0.0
+            self.pvro[n_1, 2, :, -1, :] = 0.0
+            self.pvro[n_1, 3, :, :, 0] = 0.0
+            self.pvro[n_1, 3, :, :, -1] = 0.0
 
-	def init_sources(self,sources):
-		'''
-		'''
-		self.sources = sources
-	def set_sc(self,sc):
-		'''Set value of Sc, Courant's coefficient
-		'''
-		self.sc = sc
+        # BC_PERIODIC: np.roll already handles wrap-around, nothing extra needed
 
-	def calc(self, cadat):
-		'''
-		'''
+    def calc(self, cadat):
+        """Execute one FDTD time step.
 
-		alfa = 2*self.sc/self.medium.c0 #this parameter is constant in general cases
+        Updates velocity then pressure fields using the leapfrog scheme:
+            v^{n+1} = v^n - (2·sc/c0) · ∇p^n / (ρ_i + ρ_{i+1})
+            p^{n+1} = p^n - cprv · ∇·v^{n+1}
 
-		for i in range(len(self.sources)):
-			self.source_index = i
-			self.pvro[self.counter.n,0,self.sources_coords[i,0],self.sources_coords[i,1],self.sources_coords[i,2]] = self.sources[i].tone[self.counter.cont]
+        Args:
+            cadat: Current simulation time (for logging).
+        """
+        n = self.counter.n
+        n_1 = self.counter.n_1
+        alfa = 2.0 * self.sc / self.medium.c0
 
+        # --- Inject sources (soft = additive, hard = overwrite) ---
+        for i, src in enumerate(self.sources):
+            sx, sy, sz = self.sources_coords[i]
+            if self.counter.cont < len(src.tone):
+                if src.source_type == 'soft':
+                    self.pvro[n, 0, sx, sy, sz] += src.tone[self.counter.cont]
+                else:
+                    self.pvro[n, 0, sx, sy, sz] = src.tone[self.counter.cont]
 
-		for j in range(len(self.micros)):
-			self.microphone_index = j
-			self.micros[j].data[self.counter.cont-1] = self.pvro[self.counter.n,0,self.micros_coords[j,0],self.micros_coords[j,1],self.micros_coords[j,2]]
+        # --- Record microphone data ---
+        for j, mic in enumerate(self.micros):
+            mx, my, mz = self.micros_coords[j]
+            if self.counter.cont < len(mic.data):
+                mic.data[self.counter.cont] = self.pvro[n, 0, mx, my, mz]
 
-		self.pvro[self.counter.n_1,1] =  self.pvro[self.counter.n,1] - alfa*(np.roll(self.pvro[self.counter.n,0],-1,axis=0)-self.pvro[self.counter.n,0])/(self.pvro[self.counter.n,4]+np.roll(self.pvro[self.counter.n,4],-1,axis=0))
+        # --- Update velocity fields (leapfrog) ---
+        # vx: forward difference in x
+        ro_sum_x = self.pvro[n, 4] + np.roll(self.pvro[n, 4], -1, axis=0)
+        self.pvro[n_1, 1] = self.pvro[n, 1] - alfa * (
+            np.roll(self.pvro[n, 0], -1, axis=0) - self.pvro[n, 0]
+        ) / ro_sum_x
 
-		self.pvro[self.counter.n_1,2] =  self.pvro[self.counter.n,2] - alfa*(np.roll(self.pvro[self.counter.n,0],-1,axis=1)-self.pvro[self.counter.n,0])/(self.pvro[self.counter.n,4]+np.roll(self.pvro[self.counter.n,4],-1,axis=1))
+        # vy: forward difference in y
+        ro_sum_y = self.pvro[n, 4] + np.roll(self.pvro[n, 4], -1, axis=1)
+        self.pvro[n_1, 2] = self.pvro[n, 2] - alfa * (
+            np.roll(self.pvro[n, 0], -1, axis=1) - self.pvro[n, 0]
+        ) / ro_sum_y
 
-		self.pvro[self.counter.n_1,3] =  self.pvro[self.counter.n,3] - alfa*(np.roll(self.pvro[self.counter.n,0],-1,axis=2)-self.pvro[self.counter.n,0])/(self.pvro[self.counter.n,4]+np.roll(self.pvro[self.counter.n,4],-1,axis=2))
+        # vz: forward difference in z
+        ro_sum_z = self.pvro[n, 4] + np.roll(self.pvro[n, 4], -1, axis=2)
+        self.pvro[n_1, 3] = self.pvro[n, 3] - alfa * (
+            np.roll(self.pvro[n, 0], -1, axis=2) - self.pvro[n, 0]
+        ) / ro_sum_z
 
-		self.pvro[self.counter.n_1,0] =  self.pvro[self.counter.n,0] - self.pvro[self.counter.n,5]*((self.pvro[self.counter.n_1,1]-np.roll(self.pvro[self.counter.n_1,1],1,axis=0))+(self.pvro[self.counter.n_1,2]-np.roll(self.pvro[self.counter.n_1,2],1,axis=1))+(self.pvro[self.counter.n_1,3]-np.roll(self.pvro[self.counter.n_1,3],1,axis=2)))
+        # --- Update pressure field ---
+        div_v = (
+            (self.pvro[n_1, 1] - np.roll(self.pvro[n_1, 1], 1, axis=0)) +
+            (self.pvro[n_1, 2] - np.roll(self.pvro[n_1, 2], 1, axis=1)) +
+            (self.pvro[n_1, 3] - np.roll(self.pvro[n_1, 3], 1, axis=2))
+        )
+        self.pvro[n_1, 0] = self.pvro[n, 0] - self.pvro[n, 5] * div_v
 
-		self.counter.swap()
+        # --- Apply boundary conditions ---
+        self._apply_boundary_conditions(n_1)
 
-		if self.save_status == 1:
-			fl.output('p_'+str(self.counter.cont),self.pvro[self.counter.n,0])
-			fl.output('vx_'+str(self.counter.cont),self.pvro[self.counter.n,1])
-			fl.output('vy_'+str(self.counter.cont),self.pvro[self.counter.n,2])
-			fl.output('vz_'+str(self.counter.cont),self.pvro[self.counter.n,3])
+        # --- Advance counter ---
+        self.counter.swap()
 
+    def run(self, callback=None):
+        """Run the full simulation.
 
+        Args:
+            callback: Optional function called each step with (step, total_steps, sim).
 
-	def check_status(self):
-		'''Checking aliasing problems that could appear by frequency of source or mesh resolution
-		'''
-		self.long_wave = self.medium.c0 / np.array([sources.frequency for sources in self.sources])
-		self.dres_min_antialising = self.long_wave/(2 * np.sqrt(3))
-		self.frequency_min_antialising = self.medium.c0 / (2*np.sqrt(3)*self.room.dres)
+        Returns:
+            Simulation duration in seconds.
+        """
+        total_steps = int(self.t / self.dt)
+        start = timer_module.time()
 
-		self.status=SIM_NO_ERR-7
-		if (np.array([sources.frequency for sources in self.sources]) <= self.frequency_min_antialising).any():
-			self.status+=SIM_ERR_FREQ     # SIM_ERR_FREQ
-		if (self.room.dres <= self.dres_min_antialising).any():
-			self.status+=SIM_ERR_RES
-		if (self.room.dims[0] or self.room.dims[1] or self.room.dims[2])  >= 4:
-			self.status+=SIM_ERR_DIMS
+        for step in range(total_steps):
+            cadat = step * self.dt
+            self.cadat = cadat
+            self.calc(cadat)
+            if callback is not None:
+                callback(step, total_steps, self)
 
-	def __str__(self):
-		'''Information of simulation
-		'''
-		cad=''
+        self.sim_duration = timer_module.time() - start
+        self.counter.reset()
+        return self.sim_duration
 
-		cad+= self.room.__str__()
-		cad+= self.medium.__str__()
+    def get_pressure_field(self):
+        """Return current pressure field snapshot.
 
-		for source in self.sources:
-			cad+= source.__str__()
+        Returns:
+            3D numpy array of pressure values.
+        """
+        return self.pvro[self.counter.n, 0].copy()
 
-		# Simulation
-		cad+= '+' + '-'*80+'+\n'
-		cad+= '|' + ' '*30 + 'Simulation parameters' + ' '*29 + '|' + '\n'
-		cad+= '+' + '-'*80+'+\n'
-		cad+= 'Courant Coefficient: %.2f\n' %(self.sc)
-		cad+= 'Time simulated: %.2f [s]\n'%(self.t)
-		cad+= 'Time step: %.8f [s]\n' %(self.dt)
-		cad+= 'Total steps: %i\n' %(self.t/self.dt)
-		cad+= 'Time of simulation: %.2f [s]\n' %(self.sim_duration)
-		cad+= '-'*80 + '\n\n'
-		return(cad)
+    def check_status(self):
+        """Check for aliasing and resolution problems.
 
-	# def check(self):
-	# 	'''Checking aliasing problems that could appear by frequency of source or mesh resolution
-	# 	'''
-	#
-	# 	self.long_wave = self.room.c0 / self.source.frequency
-	# 	self.dres_min_antialising = self.long_wave/(2 * np.sqrt(3))
-	# 	self.frequency_min_antialising = self.room.c0 / (2*np.sqrt(3)*self.room.dres)
-	#
-	# 	if self.source.frequency <= self.frequency_min_antialising:
-	# 		self.securityparameter_freq = True
-	# 	elif  self.source.frequency >= self.frequency_min_antialising:
-	# 		self.securityparameter_freq = False
-	#
-	# 	if self.room.dres <= self.dres_min_antialising:
-	# 		self.securityparameter_dres = True
-	# 	elif self.room.dres >= self.dres_min_antialising:
-	# 		self.securityparameter_dres = False
-	#
-	# 	if (self.room.dims[0] or self.room.dims[1] or self.room.dims[2])  < 4:
-	# 		self.security_parametre_dims = False
-	# 	elif (self.room.dims[0] or self.room.dims[1] or self.room.dims[2]) >= 4:
-	# 		self.security_parametre_dims = True
-	#
-	#
-	#
-	# 	if self.securityparameter_freq and self.securityparameter_dres:
-	# 		print('#########################')
-	# 		print('#Room and source checked#')
-	# 		print('#########################')
-	# 		print('Frequency of source: %.2f [Hz]' %self.source.frequency)
-	# 		print('Room mesh resolution: %.2f [nodes/m]' %self.room.dres)
-	# 		print('#########################')
-	# 		print('CORRECT VALUES')
-	#
-	# 	if not(self.securityparameter_freq):
-	# 		print('#########################')
-	# 		print('#Room and source checked#')
-	# 		print('#########################')
-	# 		print('Frequency of source: %.2f [Hz]' %self.source.frequency)
-	# 		print('Room mesh resolution: %.2f [nodes/m]' %self.room.dres)
-	# 		print('#########################')
-	# 		print('Minimum Frequency value required to avoid aliasing')
-	# 		print('f_min = %.2f [Hz]' %self.frequency_min_antialising)
-	#
-	# 	if not(self.securityparameter_dres):
-	# 		print('#########################')
-	# 		print('#Room and source checked#')
-	# 		print('#########################')
-	# 		print('Frequency of source: %.2f [Hz]' %self.source.frequency)
-	# 		print('Room mesh resolution: %.2f [nodes/m]' %self.room.dres)
-	# 		print('3########################')
-	# 		print('Minimum mesh resolution required to avoid aliasing')
-	# 		print('dres_min = %.2f [nodes/m]' %self.dres_min_antialising)
-	#
-	# 	if not(self.security_parametre_dims):
-	# 		print('########################')
-	# 		print('Minimum mesh lenght required to complete simulation')
-	# 		print('########################')
-	# 		print('dims_min = 4 [nodes]')
+        Verifies that the source frequencies and grid resolution satisfy
+        the Nyquist/CFL conditions for accurate simulation.
+        """
+        freqs = np.array([s.frequency for s in self.sources])
+        self.long_wave = self.medium.c0 / freqs
+        self.dres_min_antialising = self.long_wave / (2.0 * np.sqrt(3))
+        self.frequency_max = self.medium.c0 / (2.0 * np.sqrt(3) * self.room.dres)
+
+        self.status = SIM_NO_ERR
+
+        # Check frequency limit
+        if np.any(freqs > self.frequency_max):
+            self.status |= SIM_ERR_FREQ
+
+        # Check spatial resolution
+        if np.any(self.room.dres > self.dres_min_antialising):
+            self.status |= SIM_ERR_RES
+
+        # Check minimum grid size
+        if (self.room.dims[0] < 4 or self.room.dims[1] < 4 or
+                self.room.dims[2] < 4):
+            self.status |= SIM_ERR_DIMS
+
+    @property
+    def total_steps(self):
+        """Total number of time steps."""
+        return int(self.t / self.dt)
+
+    def __str__(self):
+        """Pretty-print simulation information."""
+        cad = ''
+        cad += self.room.__str__()
+        cad += self.medium.__str__()
+
+        for source in self.sources:
+            cad += source.__str__()
+
+        for mic in self.micros:
+            cad += mic.__str__()
+
+        cad += '+' + '-' * 80 + '+\n'
+        cad += '|' + ' ' * 30 + 'Simulation parameters' + ' ' * 29 + '|\n'
+        cad += '+' + '-' * 80 + '+\n'
+        cad += 'Boundary condition: %s\n' % self.boundary
+        cad += 'Wall reflection: %.2f\n' % self.wall_reflection
+        cad += 'Courant coefficient: %.4f\n' % self.sc
+        cad += 'Time simulated: %.4f [s]\n' % self.t
+        cad += 'Time step: %.8f [s]\n' % self.dt
+        cad += 'Total steps: %d\n' % self.total_steps
+        cad += 'Max frequency (anti-aliasing): %.2f [Hz]\n' % self.frequency_max
+        cad += 'Simulation wall-clock time: %.2f [s]\n' % self.sim_duration
+        cad += 'Status: %s\n' % (
+            'OK' if self.status == SIM_NO_ERR else 'ERROR (code %d)' % self.status)
+        cad += '-' * 80 + '\n\n'
+        return cad

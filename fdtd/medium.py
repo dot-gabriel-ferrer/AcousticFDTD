@@ -1,121 +1,126 @@
-#coding:utf-8
-'''
-TFG Acoustics Simulations
+# coding: utf-8
+"""
+AcousticFDTD - Medium Module
 
-MEDIUM CLASS
+Defines the physical medium (air, water, etc.) for acoustic propagation,
+including speed of sound, density, and relative velocity fields.
 
-@author Elías Gabriel Ferrer Jorge
-'''
+Author: Elías Gabriel Ferrer Jorge
+"""
 
 import numpy as np
 
+__VERSION__ = '1.0.0'
+
+# Preset media constants
+MEDIA_PRESETS = {
+    'air': {'c0': 343.0, 'cr0': 1.0, 'r0h': 1.225},
+    'water': {'c0': 1493.0, 'cr0': 1.0, 'r0h': 997.0},
+    'saltwater': {'c0': 1533.0, 'cr0': 1.0, 'r0h': 1027.0},
+}
+
 
 class Medium:
-	'''
-	Medium functions:
+    """Physical medium properties for the simulation domain.
 
-	    change_medium(co,cr,co)
+    Stores spatially varying density and relative velocity fields on the
+    FDTD grid, plus the scalar base speed of sound.
 
-	    add_wall_density(dims_ro, pini_ro, ro)
+    Args:
+        room: Room object defining the grid dimensions.
+        medium: Medium name ('air', 'water', 'saltwater', or custom). Default 'air'.
+        c0: Speed of sound in [m/s]. Default 343.0 (air at 20°C).
+        cr0: Relative speed of sound (scalar). Default 1.0.
+        r0h: Homogeneous density in [kg/m³]. Default 1.225 (air at 20°C).
+    """
 
-	    add_ wall_medium(dims_med, pini_med, c0,cr,ro,) -> In process
+    def __init__(self, room, medium='air', c0=343.0, cr0=1.0, r0h=1.225):
+        self.room = room
 
+        # Apply preset if available
+        if medium.lower() in MEDIA_PRESETS:
+            preset = MEDIA_PRESETS[medium.lower()]
+            c0 = preset['c0']
+            cr0 = preset['cr0']
+            r0h = preset['r0h']
 
-	'''
-	def __init__(self,room, medium='Air', c0=340., cr0=1., r0h=1.280):
-		'''
-		Physical parameters:
+        self.medium_name = medium
+        self.c0 = float(c0)
+        self.cr = cr0 * np.ones(self.room.dims, dtype=float)
+        self.ro_homogeneous = float(r0h)
+        self.ro = self.ro_homogeneous * np.ones(self.room.dims, dtype=float)
 
-		    c0 -> (float) Sound velocity in medium
+    def change_medium(self, medium_name, c0=None, cr=None, ro=None):
+        """Change the medium properties.
 
-		    cr -> (np.ndarray) Relative velocity Sound mesh
+        Args:
+            medium_name: Name of the new medium.
+            c0: Speed of sound [m/s]. If None, keeps current.
+            cr: Relative speed of sound. If None, keeps current.
+            ro: Density [kg/m³]. If None, keeps current.
+        """
+        if not isinstance(medium_name, str):
+            raise ValueError('medium_name must be a string')
 
-		    ro -> (np.ndarray) Medium density mesh
+        self.medium_name = medium_name
 
-		    Inital physical parametes in room:
+        if medium_name.lower() in MEDIA_PRESETS:
+            preset = MEDIA_PRESETS[medium_name.lower()]
+            c0 = c0 if c0 is not None else preset['c0']
+            cr = cr if cr is not None else preset['cr0']
+            ro = ro if ro is not None else preset['r0h']
 
-		        Homogeneous medium: Air
-		            co = 340.
-		            cr = 1 * np.ones(dims, dtype='float')
-		            ro = 1.280 * np.ones(dims, dtype='float')
-		'''
-		self.room = room
+        if c0 is not None:
+            if c0 <= 0:
+                raise ValueError('Speed of sound c0 must be positive')
+            self.c0 = float(c0)
 
-		self.medium_name = medium
-		self.c0 = c0
-		self.cr = cr0*np.ones(self.room.dims, dtype='float')
-		self.ro_homogeneous = r0h
-		self.ro = self.ro_homogeneous * np.ones(self.room.dims, dtype='float')
+        if cr is not None:
+            if isinstance(cr, (int, float)):
+                self.cr = float(cr) * np.ones(self.room.dims, dtype=float)
+            else:
+                self.cr = np.array(cr, dtype=float)
 
-	def change_medium(self, medium_name ,c0, cr, ro):
-		'''
-		Change physical parameters pf medium
+        if ro is not None:
+            if isinstance(ro, (int, float)):
+                if ro <= 0:
+                    raise ValueError('Density must be positive')
+                self.ro_homogeneous = float(ro)
+                self.ro = self.ro_homogeneous * np.ones(self.room.dims, dtype=float)
+            else:
+                self.ro = np.array(ro, dtype=float)
+                self.ro_homogeneous = float(np.mean(self.ro))
 
-		INPUTS:
+    def add_wall_density(self, dims_wall, pini_wall, ro):
+        """Add a rectangular region with different density (e.g., a wall).
 
-			medium_name -> (str) Name of medium defined
+        Args:
+            dims_wall: Dimensions of wall region [x, y, z] in meters.
+            pini_wall: Starting position of wall [x, y, z] in meters.
+            ro: Wall density in [kg/m³].
 
-			c0     -> (float) Sound velocity in medium [m/s]
+        Raises:
+            ValueError: If density is non-positive.
+        """
+        if ro <= 0:
+            raise ValueError('Wall density must be positive')
 
-			cr     -> (float) Relative velocity Sound [m/s]
+        dims_n = np.array(np.array(dims_wall) / self.room.dres, dtype=int)
+        pini_n = np.array(np.array(pini_wall) / self.room.dres, dtype=int)
 
-			ro     -> (float) Medium density [kg/m3]
+        self.ro[
+            pini_n[0]:dims_n[0] + pini_n[0],
+            pini_n[1]:dims_n[1] + pini_n[1],
+            pini_n[2]:dims_n[2] + pini_n[2]
+        ] = ro
 
-		Example:
-			change_medium(medium_name = 'water', c0 = 1493 ,cr = 1, ro = 997)
-			change_medium(medium_name = 'saltwater', c0 = 1533 ,cr = 1, ro = 1027)
-		'''
-
-		if type(medium_name) == str:
-			self.medium_name = medium_name
-		elif type(medium_name) != str:
-			raise ValueError('medium_name type must to be string')
-
-			if c0 == 0:
-				raise ValueError('c0 value cannot by 0')
-			elif c0 !=0:
-				self.c0 = c0
-
-			if type(cr) == int:
-				self.cr = cr*np.ones(self.room.dims, dtype='float')
-			else:
-				self.cr = cr
-
-		if type(ro) == int:
-			self.ro_homogeneous = ro
-			self.ro = self.ro_homogeneous * np.ones(self.room.dims, dtype='float')
-		else:
-			self.ro_homogeneous = ro
-
-	def add_wall_density(self, dims_ro, pini_ro, ro):
-		'''
-		Add Homogeneous density wall
-
-		INPUTS:
-
-			dims_ro -> (list of floats) Dimensions of room (x,y,z) [meters]
-				Example: [0.3,0.3,0.3]
-
-			pini_ro -> (list of floats) Initial point in general coordinates (x,y,z) where mesh is created [meters]
-				Example: [0.,0.,0.]
-
-			ro      -> ro -> (float or matrix) wall density [kg/m3]
-				Example: 150.
-		'''
-		if ro == 0:
-			raise ValueError('ro value cannot by 0')
-		else:
-			self.dims_ro = np.array(np.array(dims_ro)/self.room.dres, int)
-			self.pini_ro = np.array(np.array(pini_ro)/self.room.dres, int)
-
-			self.ro[self.pini_ro[0]:self.dims_ro[0]+self.pini_ro[0],self.pini_ro[1]:self.dims_ro[1]+self.pini_ro[1],self.pini_ro[2]:self.dims_ro[2]+self.pini_ro[2]] = ro
-	def __str__(self):
-		'''Information of medium object
-		'''
-		cad = '+' + '-'*80 + '+\n'
-		cad+= '|'+ ' '*38 + ' Medium' + ' '*38 + ' |\n'
-		cad = '+' + '-'*80 + '+\n'
-		cad+= 'Medium: %10s\n'%(self.medium_name)
-		cad+= 'Sound velocity: co = %.2f [m/s]\n' %(self.c0)
-		cad+= 'Homogeneous density: ro = %.2f [Kg/m3]\n' %(self.ro_homogeneous)
-		return(cad)
+    def __str__(self):
+        """Pretty-print medium information."""
+        cad = '+' + '-' * 80 + '+\n'
+        cad += '|' + ' ' * 36 + ' Medium' + ' ' * 36 + ' |\n'
+        cad += '+' + '-' * 80 + '+\n'
+        cad += 'Medium: %s\n' % self.medium_name
+        cad += 'Speed of sound: c0 = %.2f [m/s]\n' % self.c0
+        cad += 'Homogeneous density: ro = %.3f [kg/m³]\n' % self.ro_homogeneous
+        cad += '-' * 80 + '\n\n'
+        return cad
