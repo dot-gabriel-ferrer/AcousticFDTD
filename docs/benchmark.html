@@ -789,13 +789,14 @@
         canvas.style.height = H + "px";
         ctx.scale(dpr, dpr);
 
-        ctx.clearRect(0, 0, W, H);
+        ctx.fillStyle = "#0e1420";
+        ctx.fillRect(0, 0, W, H);
 
         var validResults = results.filter(function (r) { return r[key]; });
         if (validResults.length === 0) return;
 
         var colors = ["#0ea5e9", "#a78bfa", "#10b981", "#eab308", "#ef4444", "#f97316", "#06b6d4"];
-        var margin = { top: 20, right: 20, bottom: 50, left: 70 };
+        var margin = { top: 20, right: 20, bottom: 65, left: 70 };
         var plotW = W - margin.left - margin.right;
         var plotH = H - margin.top - margin.bottom;
         var barW = Math.min(50, plotW / validResults.length - 10);
@@ -875,7 +876,8 @@
         canvas.style.width = W + "px";
         canvas.style.height = H + "px";
         ctx.scale(dpr, dpr);
-        ctx.clearRect(0, 0, W, H);
+        ctx.fillStyle = "#0e1420";
+        ctx.fillRect(0, 0, W, H);
 
         var validResults = results.filter(function (r) { return r.receiverData && r.receiverData.length > 0; });
         if (validResults.length === 0) return;
@@ -959,7 +961,8 @@
         canvas.style.width = W + "px";
         canvas.style.height = H + "px";
         ctx.scale(dpr, dpr);
-        ctx.clearRect(0, 0, W, H);
+        ctx.fillStyle = "#0e1420";
+        ctx.fillRect(0, 0, W, H);
 
         var validResults = results.filter(function (r) { return r.receiverData && r.receiverData.length > 10; });
         if (validResults.length === 0) return;

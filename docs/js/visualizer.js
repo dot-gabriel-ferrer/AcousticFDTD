@@ -27,6 +27,10 @@ class Visualizer {
         this.colormap = "blueRed";  // 'blueRed', 'hot', 'grayscale'
     }
 
+    setColorScale(val) {
+        this.colorScale = val;
+    }
+
     /**
      * Map a pressure value to an RGB color.
      * @param {number} val - Pressure value
@@ -87,7 +91,7 @@ class Visualizer {
             if (a > maxVal) maxVal = a;
         }
         if (maxVal < 1e-20) maxVal = 1e-20;
-        maxVal *= this.colorScale;
+        maxVal /= this.colorScale;
 
         // Create image
         const imgData = this.ctx.createImageData(cw, ch);
@@ -99,9 +103,9 @@ class Visualizer {
 
                 // Fill the cell pixels
                 const px0 = Math.floor(gx * cellW);
-                const px1 = Math.floor((gx + 1) * cellW);
+                const px1 = Math.ceil((gx + 1) * cellW);
                 const py0 = Math.floor(gy * cellH);
-                const py1 = Math.floor((gy + 1) * cellH);
+                const py1 = Math.ceil((gy + 1) * cellH);
 
                 for (let py = py0; py < py1; py++) {
                     for (let px = px0; px < px1; px++) {

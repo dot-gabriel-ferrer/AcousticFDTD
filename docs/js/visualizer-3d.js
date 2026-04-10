@@ -35,6 +35,14 @@ class Visualizer3D {
         this._animFrameId = null;
         this._initFailed = false;
 
+        // Multi-mode visualization state
+        this.vizMode = 'single-slice';
+        this._tripleSlices = [];
+        this._volumetricPoints = null;
+        this._isosurfaceMeshes = [];
+        this._particleSystem = null;
+        this._particleVelocities = null;
+
         this.init();
     }
 
@@ -552,6 +560,401 @@ class Visualizer3D {
         this.pressurePlane.position.set(posX, posY, posZ);
         this.pressurePlane.rotation.set(rotX, rotY, rotZ);
         this.scene.add(this.pressurePlane);
+    }
+
+    /**
+     * Set visualization mode
+     * @param {string} mode - 'single-slice'|'triple-slice'|'volumetric'|'isosurface'|'particles'
+     */
+    setVisualizationMode(mode) {
+        this.vizMode = mode;
+        this._clearAllModes();
+    }
+
+    /**
+     * Clear all visualization mode meshes
+     */
+    _clearAllModes() {
+        // Single slice
+        if (this.pressurePlane) {
+            this.scene.remove(this.pressurePlane);
+            this.pressurePlane.geometry.dispose();
+            this.pressurePlane.material.dispose();
+            this.pressurePlane = null;
+        }
+        // Triple slices
+        this._tripleSlices.forEach(s => {
+            this.scene.remove(s);
+            s.geometry.dispose();
+            s.material.dispose();
+        });
+        this._tripleSlices = [];
+        // Volumetric points
+        if (this._volumetricPoints) {
+            this.scene.remove(this._volumetricPoints);
+            this._volumetricPoints.geometry.dispose();
+            this._volumetricPoints.material.dispose();
+            this._volumetricPoints = null;
+        }
+        // Isosurface
+        this._isosurfaceMeshes.forEach(m => {
+            this.scene.remove(m);
+            m.geometry.dispose();
+            m.material.dispose();
+        });
+        this._isosurfaceMeshes = [];
+        // Particles
+        if (this._particleSystem) {
+            this.scene.remove(this._particleSystem);
+            this._particleSystem.geometry.dispose();
+            this._particleSystem.material.dispose();
+            this._particleSystem = null;
+            this._particleVelocities = null;
+        }
+    }
+
+    /**
+     * Pressure-to-color helper (shared by all modes)
+     */
+    _pressureColor(nv) {
+        if (nv >= 0) {
+            return [nv, 0.15 * nv, 0.06 * (1 - nv)];
+        } else {
+            return [0.06 * (1 + nv), 0.15 * (-nv), -nv];
+        }
+    }
+
+    /**
+     * Update triple-slice visualization (3 orthogonal planes)
+     */
+    updateTripleSlice(solver, sliceX, sliceY, sliceZ, dims, gridSize) {
+        if (this._initFailed || !solver) return;
+
+        // Clear previous triple slices
+        this._tripleSlices.forEach(s => {
+            this.scene.remove(s);
+            s.geometry.dispose();
+            s.material.dispose();
+        });
+        this._tripleSlices = [];
+
+        const planes = [
+            { plane: 'xy', idx: sliceZ, w: dims[0], h: dims[1], pos: [dims[0]/2, (sliceZ/Math.max(1,gridSize[2]-1))*dims[2], dims[1]/2], rot: [-Math.PI/2, 0, 0] },
+            { plane: 'xz', idx: sliceY, w: dims[0], h: dims[2], pos: [dims[0]/2, dims[2]/2, (sliceY/Math.max(1,gridSize[1]-1))*dims[1]], rot: [0, 0, 0] },
+            { plane: 'yz', idx: sliceX, w: dims[1], h: dims[2], pos: [(sliceX/Math.max(1,gridSize[0]-1))*dims[0], dims[2]/2, dims[1]/2], rot: [0, Math.PI/2, 0] }
+        ];
+
+        planes.forEach(cfg => {
+            const slice = solver.getSlice(cfg.plane, cfg.idx);
+            const { data, width, height } = slice;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.min(width, 128);
+            canvas.height = Math.min(height, 128);
+            const ctx = canvas.getContext('2d');
+            const imgData = ctx.createImageData(canvas.width, canvas.height);
+
+            let maxVal = 0;
+            for (let i = 0; i < data.length; i++) {
+                const a = Math.abs(data[i]);
+                if (a > maxVal) maxVal = a;
+            }
+            if (maxVal < 1e-20) maxVal = 1e-20;
+
+            const sx = width / canvas.width;
+            const sy = height / canvas.height;
+            for (let py = 0; py < canvas.height; py++) {
+                for (let px = 0; px < canvas.width; px++) {
+                    const gx = Math.min(Math.floor(px * sx), width - 1);
+                    const gy = Math.min(Math.floor(py * sy), height - 1);
+                    const val = data[gx + gy * width];
+                    const nv = Math.max(-1, Math.min(1, val / maxVal));
+                    const [r, g, b] = this._pressureColor(nv);
+                    const idx = (py * canvas.width + px) * 4;
+                    imgData.data[idx] = Math.floor(255 * r);
+                    imgData.data[idx + 1] = Math.floor(255 * g);
+                    imgData.data[idx + 2] = Math.floor(255 * b);
+                    imgData.data[idx + 3] = 150;
+                }
+            }
+            ctx.putImageData(imgData, 0, 0);
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.minFilter = THREE.LinearFilter;
+            tex.magFilter = THREE.LinearFilter;
+            const geo = new THREE.PlaneGeometry(cfg.w, cfg.h);
+            const mat = new THREE.MeshBasicMaterial({
+                map: tex,
+                transparent: true,
+                opacity: 0.6,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(cfg.pos[0], cfg.pos[1], cfg.pos[2]);
+            mesh.rotation.set(cfg.rot[0], cfg.rot[1], cfg.rot[2]);
+            this.scene.add(mesh);
+            this._tripleSlices.push(mesh);
+        });
+    }
+
+    /**
+     * Update volumetric point cloud from full 3D pressure data
+     */
+    updateVolumetricPoints(solver, dims, gridSize, density) {
+        if (this._initFailed || !solver) return;
+
+        const step = density || 3;
+        const nx = gridSize[0], ny = gridSize[1], nz = gridSize[2];
+        const dx = dims[0], dy = dims[1], dz = dims[2];
+
+        // Get pressure data
+        const pCur = solver.p ? solver.p[solver.n] : (solver.pJunction || null);
+        if (!pCur) return;
+
+        // Find max
+        let maxVal = 0;
+        for (let i = 0; i < pCur.length; i++) {
+            const a = Math.abs(pCur[i]);
+            if (a > maxVal) maxVal = a;
+        }
+        if (maxVal < 1e-20) maxVal = 1e-20;
+
+        // Count points
+        const ptsX = Math.ceil(nx / step);
+        const ptsY = Math.ceil(ny / step);
+        const ptsZ = Math.ceil(nz / step);
+        const numPts = ptsX * ptsY * ptsZ;
+
+        if (!this._volumetricPoints || this._volumetricPoints.geometry.attributes.position.count !== numPts) {
+            // Recreate point cloud
+            if (this._volumetricPoints) {
+                this.scene.remove(this._volumetricPoints);
+                this._volumetricPoints.geometry.dispose();
+                this._volumetricPoints.material.dispose();
+            }
+
+            const positions = new Float32Array(numPts * 3);
+            const colors = new Float32Array(numPts * 3);
+            const sizes = new Float32Array(numPts);
+
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+            const mat = new THREE.PointsMaterial({
+                size: 0.02,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8,
+                sizeAttenuation: true,
+                depthWrite: false
+            });
+
+            this._volumetricPoints = new THREE.Points(geo, mat);
+            this.scene.add(this._volumetricPoints);
+        }
+
+        const posAttr = this._volumetricPoints.geometry.attributes.position;
+        const colAttr = this._volumetricPoints.geometry.attributes.color;
+        let pi = 0;
+
+        for (let iz = 0; iz < nz; iz += step) {
+            for (let iy = 0; iy < ny; iy += step) {
+                for (let ix = 0; ix < nx; ix += step) {
+                    const flatIdx = ix + iy * nx + iz * nx * ny;
+                    const val = pCur[flatIdx];
+                    const nv = Math.max(-1, Math.min(1, val / maxVal));
+                    const absNv = Math.abs(nv);
+
+                    // Position: FDTD (x,y,z) -> Three.js (x,z,y)
+                    posAttr.array[pi * 3] = (ix / nx) * dx;
+                    posAttr.array[pi * 3 + 1] = (iz / nz) * dz;
+                    posAttr.array[pi * 3 + 2] = (iy / ny) * dy;
+
+                    // Color
+                    const [cr, cg, cb] = this._pressureColor(nv);
+                    colAttr.array[pi * 3] = cr;
+                    colAttr.array[pi * 3 + 1] = cg;
+                    colAttr.array[pi * 3 + 2] = cb;
+
+                    pi++;
+                }
+            }
+        }
+
+        posAttr.needsUpdate = true;
+        colAttr.needsUpdate = true;
+
+        // Hide points with very low pressure by making material size depend on pressure
+        this._volumetricPoints.material.opacity = 0.7;
+    }
+
+    /**
+     * Update isosurface visualization using threshold detection
+     */
+    updateIsosurface(solver, dims, gridSize, threshold) {
+        if (this._initFailed || !solver) return;
+
+        // Clear old
+        this._isosurfaceMeshes.forEach(m => {
+            this.scene.remove(m);
+            m.geometry.dispose();
+            m.material.dispose();
+        });
+        this._isosurfaceMeshes = [];
+
+        const nx = gridSize[0], ny = gridSize[1], nz = gridSize[2];
+        const dx = dims[0], dy = dims[1], dz = dims[2];
+
+        const pCur = solver.p ? solver.p[solver.n] : (solver.pJunction || null);
+        if (!pCur) return;
+
+        let maxVal = 0;
+        for (let i = 0; i < pCur.length; i++) {
+            const a = Math.abs(pCur[i]);
+            if (a > maxVal) maxVal = a;
+        }
+        if (maxVal < 1e-20) return;
+
+        const thr = threshold * maxVal;
+        const step = Math.max(1, Math.floor(Math.min(nx, ny, nz) / 20));
+
+        // Generate isosurface points for positive and negative thresholds
+        const createIsoPoints = (sign, color) => {
+            const points = [];
+            for (let iz = 1; iz < nz - 1; iz += step) {
+                for (let iy = 1; iy < ny - 1; iy += step) {
+                    for (let ix = 1; ix < nx - 1; ix += step) {
+                        const val = pCur[ix + iy * nx + iz * nx * ny];
+                        if (sign > 0 && val > thr) {
+                            points.push((ix / nx) * dx, (iz / nz) * dz, (iy / ny) * dy);
+                        } else if (sign < 0 && val < -thr) {
+                            points.push((ix / nx) * dx, (iz / nz) * dz, (iy / ny) * dy);
+                        }
+                    }
+                }
+            }
+            if (points.length < 3) return;
+
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
+            const mat = new THREE.PointsMaterial({
+                color: color,
+                size: 0.03,
+                transparent: true,
+                opacity: 0.6,
+                depthWrite: false
+            });
+            const mesh = new THREE.Points(geo, mat);
+            this.scene.add(mesh);
+            this._isosurfaceMeshes.push(mesh);
+        };
+
+        createIsoPoints(1, 0xff3333);  // Positive pressure (red)
+        createIsoPoints(-1, 0x3333ff); // Negative pressure (blue)
+    }
+
+    /**
+     * Update particle flow visualization
+     */
+    updateParticles(solver, dims, gridSize, numParticles) {
+        if (this._initFailed || !solver) return;
+
+        const nx = gridSize[0], ny = gridSize[1], nz = gridSize[2];
+        const dx = dims[0], dy = dims[1], dz = dims[2];
+        const N = numParticles || 2000;
+
+        const pCur = solver.p ? solver.p[solver.n] : (solver.pJunction || null);
+        if (!pCur) return;
+
+        let maxVal = 0;
+        for (let i = 0; i < pCur.length; i++) {
+            const a = Math.abs(pCur[i]);
+            if (a > maxVal) maxVal = a;
+        }
+        if (maxVal < 1e-20) maxVal = 1e-20;
+
+        if (!this._particleSystem) {
+            const positions = new Float32Array(N * 3);
+            const colors = new Float32Array(N * 3);
+            this._particleVelocities = new Float32Array(N * 3);
+
+            // Random initial positions
+            for (let i = 0; i < N; i++) {
+                positions[i * 3] = Math.random() * dx;
+                positions[i * 3 + 1] = Math.random() * dz;
+                positions[i * 3 + 2] = Math.random() * dy;
+                colors[i * 3] = 0.5;
+                colors[i * 3 + 1] = 0.5;
+                colors[i * 3 + 2] = 0.5;
+            }
+
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const mat = new THREE.PointsMaterial({
+                size: 0.012,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.85,
+                sizeAttenuation: true,
+                depthWrite: false
+            });
+
+            this._particleSystem = new THREE.Points(geo, mat);
+            this.scene.add(this._particleSystem);
+        }
+
+        const posArr = this._particleSystem.geometry.attributes.position.array;
+        const colArr = this._particleSystem.geometry.attributes.color.array;
+        const scale = solver.dt * 50;
+
+        for (let i = 0; i < N; i++) {
+            // Current position in Three.js coords (x, z_fdtd, y_fdtd)
+            let px = posArr[i * 3];
+            let pz = posArr[i * 3 + 1]; // This is FDTD z (height)
+            let py = posArr[i * 3 + 2]; // This is FDTD y
+
+            // Map to grid indices
+            const gx = Math.floor((px / dx) * nx);
+            const gy = Math.floor((py / dy) * ny);
+            const gz = Math.floor((pz / dz) * nz);
+
+            if (gx >= 1 && gx < nx - 1 && gy >= 1 && gy < ny - 1 && gz >= 1 && gz < nz - 1) {
+                // Pressure gradient as velocity proxy
+                const c = gx + gy * nx + gz * nx * ny;
+                const dpx = (pCur[c + 1] - pCur[c - 1]) * scale;
+                const dpy = (pCur[c + nx] - pCur[c - nx]) * scale;
+                const dpz = (pCur[c + nx * ny] - pCur[c - nx * ny]) * scale;
+
+                posArr[i * 3] += dpx;
+                posArr[i * 3 + 2] += dpy;
+                posArr[i * 3 + 1] += dpz;
+
+                // Color by local pressure
+                const val = pCur[c];
+                const nv = Math.max(-1, Math.min(1, val / maxVal));
+                const [cr, cg, cb] = this._pressureColor(nv);
+                colArr[i * 3] = cr;
+                colArr[i * 3 + 1] = cg;
+                colArr[i * 3 + 2] = cb;
+            }
+
+            // Reset particles that exit the domain
+            if (posArr[i * 3] < 0 || posArr[i * 3] > dx ||
+                posArr[i * 3 + 1] < 0 || posArr[i * 3 + 1] > dz ||
+                posArr[i * 3 + 2] < 0 || posArr[i * 3 + 2] > dy) {
+                posArr[i * 3] = Math.random() * dx;
+                posArr[i * 3 + 1] = Math.random() * dz;
+                posArr[i * 3 + 2] = Math.random() * dy;
+            }
+        }
+
+        this._particleSystem.geometry.attributes.position.needsUpdate = true;
+        this._particleSystem.geometry.attributes.color.needsUpdate = true;
     }
 
     /**

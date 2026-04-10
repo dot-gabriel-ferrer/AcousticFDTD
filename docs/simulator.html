@@ -90,6 +90,34 @@
             </div>
         </div>
 
+        <!-- Algorithm Selector -->
+        <div class="panel">
+            <div class="panel-title">Algorithm</div>
+            <div class="form-row single">
+                <div class="form-group">
+                    <label>Solver</label>
+                    <select id="algorithm" class="sim-input">
+                        <option value="standard-fdtd" selected>Standard FDTD (Yee)</option>
+                        <option value="compact-fdtd">Compact FDTD (KW 27-pt)</option>
+                        <option value="iwb-fdtd">Interpolated Wideband</option>
+                        <option value="dwm-rect">Waveguide Mesh (DWM)</option>
+                        <option value="high-order-fdtd">High-Order FDTD O(4,2)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row single">
+                <div class="form-group">
+                    <label>Dimensions</label>
+                    <div class="dim-toggle" id="dimToggle">
+                        <button class="dim-btn" data-dim="1">1D</button>
+                        <button class="dim-btn" data-dim="2">2D</button>
+                        <button class="dim-btn active" data-dim="3">3D</button>
+                    </div>
+                </div>
+            </div>
+            <div id="algoInfo" class="algo-info-box"></div>
+        </div>
+
         <!-- Source Parameters -->
         <div class="panel">
             <div class="panel-title">Source</div>
@@ -129,21 +157,38 @@
             </div>
         </div>
 
-        <!-- Microphone Parameters -->
+        <!-- Microphones -->
         <div class="panel">
-            <div class="panel-title">Microphone</div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>X [m]</label>
-                    <input type="number" id="micX" class="sim-input" value="0.2" min="0" max="5" step="0.05">
-                </div>
-                <div class="form-group">
-                    <label>Y [m]</label>
-                    <input type="number" id="micY" class="sim-input" value="0.2" min="0" max="5" step="0.05">
-                </div>
-                <div class="form-group">
-                    <label>Z [m]</label>
-                    <input type="number" id="micZ" class="sim-input" value="0.5" min="0" max="5" step="0.05">
+            <div class="panel-title">
+                Microphones
+                <button id="btnAddMic" class="btn-add-mic" title="Add microphone">+ Add</button>
+            </div>
+            <div id="micList">
+                <div class="mic-item" data-mic-id="0">
+                    <div class="mic-item-header">
+                        <span class="mic-color-dot" style="background: #00ff88"></span>
+                        <span class="mic-label">Mic 1</span>
+                        <select class="mic-pattern sim-input" data-field="pattern">
+                            <option value="omni" selected>Omni</option>
+                            <option value="cardioid">Cardioid</option>
+                            <option value="figure8">Figure-8</option>
+                            <option value="hypercardioid">Hypercardioid</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>X [m]</label>
+                            <input type="number" class="sim-input mic-pos" data-field="x" value="0.2" min="0" max="5" step="0.05">
+                        </div>
+                        <div class="form-group">
+                            <label>Y [m]</label>
+                            <input type="number" class="sim-input mic-pos" data-field="y" value="0.2" min="0" max="5" step="0.05">
+                        </div>
+                        <div class="form-group">
+                            <label>Z [m]</label>
+                            <input type="number" class="sim-input mic-pos" data-field="z" value="0.5" min="0" max="5" step="0.05">
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -151,6 +196,60 @@
         <!-- View Controls -->
         <div class="panel">
             <div class="panel-title">Visualization</div>
+            <div class="form-row single">
+                <div class="form-group">
+                    <label>3D Mode</label>
+                    <select id="vizMode">
+                        <option value="single-slice" selected>Single Slice</option>
+                        <option value="triple-slice">Triple Slice (Orthogonal)</option>
+                        <option value="volumetric">Volumetric Points</option>
+                        <option value="isosurface">Isosurface</option>
+                        <option value="particles">Particle Flow</option>
+                    </select>
+                </div>
+            </div>
+            <div id="vizModeControls">
+                <div id="tripleSliceControls" class="mode-controls" style="display: none;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>X: <span id="sliceXVal">0</span></label>
+                            <input type="range" id="sliceX" value="0" min="0" max="20" step="1">
+                        </div>
+                        <div class="form-group">
+                            <label>Y: <span id="sliceYVal">0</span></label>
+                            <input type="range" id="sliceY" value="0" min="0" max="20" step="1">
+                        </div>
+                        <div class="form-group">
+                            <label>Z: <span id="sliceZVal">0</span></label>
+                            <input type="range" id="sliceZ" value="0" min="0" max="20" step="1">
+                        </div>
+                    </div>
+                </div>
+                <div id="volumetricControls" class="mode-controls" style="display: none;">
+                    <div class="form-row single">
+                        <div class="form-group">
+                            <label>Point Density: <span id="ptDensityVal">3</span></label>
+                            <input type="range" id="ptDensity" value="3" min="1" max="6" step="1">
+                        </div>
+                    </div>
+                </div>
+                <div id="isosurfaceControls" class="mode-controls" style="display: none;">
+                    <div class="form-row single">
+                        <div class="form-group">
+                            <label>Threshold: <span id="isoThreshVal">0.3</span></label>
+                            <input type="range" id="isoThresh" value="0.3" min="0.05" max="0.95" step="0.05">
+                        </div>
+                    </div>
+                </div>
+                <div id="particleControls" class="mode-controls" style="display: none;">
+                    <div class="form-row single">
+                        <div class="form-group">
+                            <label>Particles: <span id="pCountVal">2000</span></label>
+                            <input type="range" id="pCount" value="2000" min="500" max="5000" step="500">
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="form-row two-col">
                 <div class="form-group">
                     <label>View Plane</label>
@@ -188,6 +287,14 @@
             <div class="btn-group" style="margin-top: 0.5rem">
                 <button id="btnPlayAudio" class="btn btn-success" disabled>Play Audio</button>
                 <button id="btnExportWav" class="btn" disabled>Export WAV</button>
+            </div>
+            <div class="form-row single" style="margin-top: 0.5rem">
+                <div class="form-group">
+                    <label>Audio Source</label>
+                    <select id="audioMicSelect">
+                        <option value="0">Mic 1</option>
+                    </select>
+                </div>
             </div>
         </div>
 
@@ -278,6 +385,57 @@
                 </div>
             </div>
 
+            <!-- Acoustic Parameters -->
+            <div class="viz-panel full-width" id="acousticParamsPanel" style="display: none;">
+                <div class="viz-header">
+                    Acoustic Parameters
+                    <span class="badge" style="background: #a78bfa">ISO 3382</span>
+                </div>
+                <div class="viz-body" style="flex-direction: column; padding: 1rem;">
+                    <div id="paramsMicTabs" class="params-mic-tabs"></div>
+                    <div class="params-grid" id="paramsGrid">
+                        <div class="param-card">
+                            <div class="param-label">RT60 (T30)</div>
+                            <div class="param-value" id="paramRT60">--</div>
+                            <div class="param-unit">s</div>
+                        </div>
+                        <div class="param-card">
+                            <div class="param-label">RT60 (T20)</div>
+                            <div class="param-value" id="paramRT20">--</div>
+                            <div class="param-unit">s</div>
+                        </div>
+                        <div class="param-card">
+                            <div class="param-label">EDT</div>
+                            <div class="param-value" id="paramEDT">--</div>
+                            <div class="param-unit">s</div>
+                        </div>
+                        <div class="param-card">
+                            <div class="param-label">C80</div>
+                            <div class="param-value" id="paramC80">--</div>
+                            <div class="param-unit">dB</div>
+                        </div>
+                        <div class="param-card">
+                            <div class="param-label">D50</div>
+                            <div class="param-value" id="paramD50">--</div>
+                            <div class="param-unit">%</div>
+                        </div>
+                        <div class="param-card">
+                            <div class="param-label">Ts</div>
+                            <div class="param-value" id="paramTs">--</div>
+                            <div class="param-unit">ms</div>
+                        </div>
+                        <div class="param-card">
+                            <div class="param-label">Peak SPL</div>
+                            <div class="param-value" id="paramSPL">--</div>
+                            <div class="param-unit">dB</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 0.8rem;">
+                        <canvas id="edcCanvas" width="600" height="150"></canvas>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
     </main>
@@ -296,9 +454,11 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/controls/OrbitControls.js"></script>
 <script src="js/visualizer-3d.js"></script>
+<script src="js/benchmark.js"></script>
 <script src="js/fdtd-solver.js"></script>
 <script src="js/visualizer.js"></script>
 <script src="js/audio-engine.js"></script>
+<script src="js/acoustic-params.js"></script>
 <script src="js/app.js"></script>
 
 <!-- Wall reflection value display -->
