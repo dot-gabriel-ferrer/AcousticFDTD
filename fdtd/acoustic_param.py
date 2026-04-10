@@ -35,6 +35,10 @@ def velocity_magnitude(vx, vy, vz):
     return np.sqrt(vx ** 2 + vy ** 2 + vz ** 2)
 
 
+# Backward-compatibility aliases
+v = velocity_magnitude
+
+
 def acoustic_flux(area, vx, vy, vz):
     """Compute acoustic volume flux through a surface.
 
