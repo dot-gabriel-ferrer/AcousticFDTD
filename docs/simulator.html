@@ -211,6 +211,17 @@
         <!-- Visualization Grid -->
         <div class="viz-grid">
 
+            <!-- 3D View -->
+            <div class="viz-panel full-width">
+                <div class="viz-header">
+                    3D Environment View
+                    <span class="badge" style="background: #a855f7">3D</span>
+                </div>
+                <div class="viz-body" style="min-height: 400px; position: relative;">
+                    <div id="viewer3D" style="width: 100%; height: 400px;"></div>
+                </div>
+            </div>
+
             <!-- Pressure Field -->
             <div class="viz-panel full-width">
                 <div class="viz-header">
@@ -280,6 +291,10 @@
 </footer>
 
 <!-- Scripts -->
+<!-- Three.js for 3D visualization -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.150.1/examples/js/controls/OrbitControls.js"></script>
+<script src="js/visualizer-3d.js"></script>
 <script src="js/fdtd-solver.js"></script>
 <script src="js/visualizer.js"></script>
 <script src="js/audio-engine.js"></script>
