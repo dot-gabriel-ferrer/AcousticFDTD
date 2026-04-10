@@ -1,44 +1,62 @@
-#coding:utf-8
-'''
-TFG Acoustics Simulations
+# coding: utf-8
+"""
+AcousticFDTD - Post-simulation Analysis
 
-Analysis of simulation read simulation files in data directory
+Loads simulation field data and computes acoustic parameters:
+SPL, impedance, intensity.
 
-@author: Elías Gabriel Ferrer Jorge
-'''
+Author: Elías Gabriel Ferrer Jorge
+"""
 
-import fdtd.microphone as mc
-import fdtd. datafiles as fl
-import fdtd.acoustic_param as ap
-import fdtd.medium as me
-import matplotlib.pyplot as plt
 import numpy as np
-#ESTOS DATOS HAY QUE LEERLOS DE FUERA
-STEPS = fl.read_number('steps.txt')
-RHO   = 340.
-C     = 1280.
-P = []
-VX = []
-VY = []
-VZ = []
-for i in range(1,STEPS):
-	p = fl.input('p_' + str(i))
-	vx = fl.input('vx_' + str(i))
-	vy = fl.input('vy_' + str(i))
-	vz = fl.input('vz_' + str(i))
-	P.append(p)
-	VX.append(vx)
-	VY.append(vy)
-	VZ.append(vz)
+import fdtd.datafiles as fl
+import fdtd.acoustic_param as ap
 
-p = np.array(P)
-vx = np.array(VX)
-vy = np.array(VY)
-vz = np.array(VZ)
-v = np.sqrt(vx**2 + vy**2 + vz**2)
 
-p_dB = ap.lvl_sound_pressure(np.abs(p))
+def analyze_simulation(steps_file='steps.txt', c0=343.0, rho=1.225):
+    """Load and analyze saved simulation data.
 
-z_sp = ap.impedance_z_sp(p,v)
+    Args:
+        steps_file: Path to file containing step count.
+        c0: Speed of sound [m/s]. Default 343.0 (air).
+        rho: Medium density [kg/m³]. Default 1.225 (air).
 
-I_sound = ap.intensity(p,RHO,C)
+    Returns:
+        Dictionary with computed acoustic fields.
+    """
+    steps = fl.read_number(steps_file)
+
+    P, VX, VY, VZ = [], [], [], []
+    for i in range(1, steps):
+        try:
+            P.append(fl.input('p_' + str(i)))
+            VX.append(fl.input('vx_' + str(i)))
+            VY.append(fl.input('vy_' + str(i)))
+            VZ.append(fl.input('vz_' + str(i)))
+        except FileNotFoundError:
+            break
+
+    p = np.array(P)
+    vx = np.array(VX)
+    vy = np.array(VY)
+    vz = np.array(VZ)
+    v = ap.velocity_magnitude(vx, vy, vz)
+
+    p_dB = ap.sound_pressure_level(p)
+    z_sp = ap.specific_impedance(p, v)
+    I_sound = ap.intensity(p, rho, c0)
+
+    return {
+        'pressure': p,
+        'velocity': v,
+        'spl_dB': p_dB,
+        'impedance': z_sp,
+        'intensity': I_sound,
+    }
+
+
+if __name__ == '__main__':
+    results = analyze_simulation()
+    print("Analysis complete.")
+    print("Pressure field shape:", results['pressure'].shape)
+    print("Max SPL: %.2f dB" % np.max(results['spl_dB']))

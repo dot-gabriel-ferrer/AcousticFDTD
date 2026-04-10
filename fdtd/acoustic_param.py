@@ -1,110 +1,173 @@
-#coding:utf-8
-'''
-TFG Acoustics Simulations
+# coding: utf-8
+"""
+AcousticFDTD - Acoustic Parameters Module
 
-Acoustic parameters calculating tools
-https://newt.phys.unsw.edu.au/jw/z.html
-https://www.animations.physics.unsw.edu.au/jw/sound-impedance-intensity.htm
+Utility functions for computing acoustic quantities from simulation data:
+sound pressure level, impedance, intensity, and convolution with impulse response.
 
-@author Elías Gabriel Ferrer Jorge
-'''
+References:
+    https://newt.phys.unsw.edu.au/jw/z.html
+    https://www.animations.physics.unsw.edu.au/jw/sound-impedance-intensity.htm
+
+Author: Elías Gabriel Ferrer Jorge
+"""
+
 import numpy as np
+from scipy.fft import fft, fftfreq
 
-def v(vx,vy,vz):
-	'''Calculate v = sqrt(vx^2 + vy^2 + vz^2)
-	'''
-	v = np.sqrt(vx,vy,vz)
-	return v
+__VERSION__ = '1.0.0'
 
-def U(type='spherical', area = 0, vx = 0, vy = 0, vz = 0):
-	'''Consider a  wave passing through an surface with an area
-	then we have a flux U through this surface.
-		type of surface can be set as:
-			type = 'spherical'
-			type = 'cylindrical'
+# Reference pressure for SPL (threshold of hearing)
+P_REF = 20e-6  # [Pa]
 
-			for example
-	'''
 
-	U = A * (vx + vy + vz)
+def velocity_magnitude(vx, vy, vz):
+    """Compute the magnitude of the velocity vector field.
 
-	print('flux through '+type +' surface')
+    Args:
+        vx: x-component of velocity field.
+        vy: y-component of velocity field.
+        vz: z-component of velocity field.
 
-	return U
+    Returns:
+        |v| = sqrt(vx² + vy² + vz²)
+    """
+    return np.sqrt(vx ** 2 + vy ** 2 + vz ** 2)
+
+
+# Backward-compatibility aliases
+v = velocity_magnitude
+
+
+def acoustic_flux(area, vx, vy, vz):
+    """Compute acoustic volume flux through a surface.
+
+    Args:
+        area: Surface area [m²].
+        vx, vy, vz: Velocity components [m/s].
+
+    Returns:
+        Volume flux U = area × |v| [m³/s].
+    """
+    return area * velocity_magnitude(vx, vy, vz)
+
 
 def intensity(p, rho, c):
-	'''Sound intensity
-	INPUT
-		p
-		rho
-		c
+    """Compute time-averaged sound intensity.
 
-	OUTPUT
-		I : Sound intensity
+    I = p² / (2 × Z) where Z = ρ × c is the acoustic impedance.
 
-		*******************************
-		I = p^2/(2Z) [W/m^2]
+    Args:
+        p: Sound pressure [Pa].
+        rho: Medium density [kg/m³].
+        c: Speed of sound [m/s].
 
-		p: Sound pressure [Pa]
-		Z: Sound impedance -> Z = rho * c
-			rho = medium density [Kg/m^3]
-			c   = sound velocity [m/s]
-	'''
-	# p = data...
-	# rho = data...
-	# c = data...
+    Returns:
+        Sound intensity [W/m²].
+    """
+    z = rho * c
+    return p ** 2 / (2.0 * z)
 
-	I = p**2/(rho*c)
 
-	return I
+def instantaneous_intensity(p, v):
+    """Compute instantaneous sound intensity.
 
-def inst_intensity(p,v):
-	'''Instantaneous Intensity
-		I_inst = p * v
-		where v = sqrt(vx^2 + vy^2 + vz^2)
-	'''
+    Args:
+        p: Instantaneous pressure [Pa].
+        v: Instantaneous velocity magnitude [m/s].
 
-	I_inst = p * v
+    Returns:
+        Instantaneous intensity I = p × v [W/m²].
+    """
+    return p * v
 
-	return I_inst
 
-def lvl_sound_pressure(P1):
-	'''
-	INPUT
-		data -> P1 [Pa]
-	OUTPUT
-		L_P : level of sound Pressure [dB]
+def sound_pressure_level(p):
+    """Compute sound pressure level in decibels.
 
-		******************************
-		L_P = 20 * log10(P1/P2) [dB]
+    L_p = 20 × log10(|p| / p_ref) where p_ref = 20 μPa.
 
-		P1 : Sound pressure acquired
-		P2 : Sound pressure of reference -> P2 = 20 [micro Pa]
-	'''
-	#P1 = data...
-	P2 = 20 * 10**-6
+    Args:
+        p: Sound pressure [Pa] (array or scalar).
 
-	L_P = 20 * np.log10(P1/P2)
+    Returns:
+        SPL in [dB].
+    """
+    p_abs = np.abs(p)
+    # Avoid log(0) by clamping
+    p_abs = np.maximum(p_abs, 1e-20)
+    return 20.0 * np.log10(p_abs / P_REF)
 
-	return L_P
 
-def impedance_z_sp(p,v):
-	'''Specific impedance z
-		z_sp = p/v
-	'''
-	z_sp = p/v
+def specific_impedance(p, v):
+    """Compute specific acoustic impedance z_sp = p / v.
 
-	return z_sp
+    Args:
+        p: Sound pressure [Pa].
+        v: Particle velocity magnitude [m/s].
 
-def impedance_z(p,U):
-	'''z is the ratio of acoustic pressure p to acoustic volume flow U
-		z = p/U
-	'''
-	z = p/U
+    Returns:
+        Specific impedance [Pa·s/m].
+    """
+    v_safe = np.where(np.abs(v) < 1e-30, 1e-30, v)
+    return p / v_safe
 
-	return z
 
-def data_conv_impulse(impulse_response,data):
-	'''Convolution of data with impulse response function
-	'''
-	
+def acoustic_impedance(p, flux):
+    """Compute acoustic impedance z = p / U.
+
+    Args:
+        p: Sound pressure [Pa].
+        flux: Acoustic volume flux [m³/s].
+
+    Returns:
+        Acoustic impedance [Pa·s/m³].
+    """
+    flux_safe = np.where(np.abs(flux) < 1e-30, 1e-30, flux)
+    return p / flux_safe
+
+
+def convolve_impulse_response(impulse_response, data):
+    """Convolve a signal with an impulse response.
+
+    Args:
+        impulse_response: Room impulse response array.
+        data: Input signal array.
+
+    Returns:
+        Convolved signal.
+    """
+    return np.convolve(data, impulse_response, mode='full')
+
+
+def compute_fft(data, sample_rate):
+    """Compute the FFT of a time-domain signal.
+
+    Args:
+        data: Time-domain signal array.
+        sample_rate: Sample rate in Hz.
+
+    Returns:
+        Tuple of (frequencies, magnitude_spectrum).
+    """
+    n = len(data)
+    yf = fft(data)
+    xf = fftfreq(n, 1.0 / sample_rate)
+    # Return only positive frequencies
+    pos = xf >= 0
+    return xf[pos], np.abs(yf[pos]) * 2.0 / n
+
+
+def transfer_function(impulse_response, sample_rate):
+    """Compute the frequency-domain transfer function from an impulse response.
+
+    Args:
+        impulse_response: Time-domain impulse response.
+        sample_rate: Sample rate in Hz.
+
+    Returns:
+        Tuple of (frequencies, magnitude_dB).
+    """
+    freqs, magnitude = compute_fft(impulse_response, sample_rate)
+    magnitude_db = 20.0 * np.log10(np.maximum(magnitude, 1e-20) / np.max(magnitude))
+    return freqs, magnitude_db
