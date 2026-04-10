@@ -344,13 +344,12 @@ class CompactFDTD extends BaseSolver {
         this.dt = this.sc * this.dres / this.c0;
         this.maxFreq = this.c0 / (2.0 * this.dres);
 
-        // KW weights for 27-point stencil
-        // lambda1: face neighbours (6), lambda2: edge neighbours (12), lambda3: corner neighbours (8)
-        this.lambda1 = 2.0 / 3.0;
-        this.lambda2 = 1.0 / 6.0;
-        this.lambda3 = 1.0 / 12.0;
-        // Note: lambda1 * 6 + lambda2 * 12 + lambda3 * 8 is not constrained to sum to 1
-        // The actual update uses: p_next = 2*p_curr - p_prev + sc^2 * Laplacian_compact
+        // KW weights for 27-point stencil (direct form at Sc = 1)
+        // Constraint: 6*l1 + 12*l2 + 8*l3 = 2
+        // Direct update: p_next = l1*face + l2*edge + l3*corner - p_prev
+        this.lambda1 = 1.0 / 4.0;    // face weight:  6 * 1/4  = 3/2
+        this.lambda2 = 1.0 / 24.0;   // edge weight:  12 * 1/24 = 1/2
+        this.lambda3 = 0;             // corner weight: not needed
 
         this.p = [
             new Float64Array(this.totalNodes),
@@ -369,8 +368,7 @@ class CompactFDTD extends BaseSolver {
         const pN = this.p[next];
 
         const nx = this.nx, ny = this.ny, nz = this.nz;
-        const sc2 = this.sc * this.sc;
-        const l1 = this.lambda1, l2 = this.lambda2, l3 = this.lambda3;
+        const l1 = this.lambda1, l2 = this.lambda2;
 
         // Inject sources
         for (const src of this.sources) {
@@ -382,7 +380,7 @@ class CompactFDTD extends BaseSolver {
         // Record receivers
         for (const rec of this.receivers) rec.data.push(pC[rec.flatIdx]);
 
-        // 27-point compact Laplacian update
+        // 27-point compact update (direct form: p_next = l1*face + l2*edge - p_prev)
         for (let iz = 1; iz < nz - 1; iz++) {
             for (let iy = 1; iy < ny - 1; iy++) {
                 for (let ix = 1; ix < nx - 1; ix++) {
@@ -403,17 +401,7 @@ class CompactFDTD extends BaseSolver {
                         pC[i + nx + nx * ny] + pC[i + nx - nx * ny] +
                         pC[i - nx + nx * ny] + pC[i - nx - nx * ny];
 
-                    // 8 corner neighbours
-                    const corner =
-                        pC[i + 1 + nx + nx * ny] + pC[i + 1 + nx - nx * ny] +
-                        pC[i + 1 - nx + nx * ny] + pC[i + 1 - nx - nx * ny] +
-                        pC[i - 1 + nx + nx * ny] + pC[i - 1 + nx - nx * ny] +
-                        pC[i - 1 - nx + nx * ny] + pC[i - 1 - nx - nx * ny];
-
-                    const laplacian = l1 * face + l2 * edge + l3 * corner -
-                        (l1 * 6 + l2 * 12 + l3 * 8) * pC[i];
-
-                    pN[i] = 2 * pC[i] - pP[i] + sc2 * laplacian;
+                    pN[i] = l1 * face + l2 * edge - pP[i];
                 }
             }
         }
@@ -428,9 +416,30 @@ class CompactFDTD extends BaseSolver {
     _applyBC(tidx) {
         const nx = this.nx, ny = this.ny, nz = this.nz;
         const p = this.p[tidx];
+        const r = this.wallReflection;
 
-        if (this.boundary === "reflective" || this.boundary === "absorbing") {
-            // Zero boundaries for simplicity (rigid for pressure-based scheme)
+        if (this.boundary === "reflective") {
+            // Neumann BC (rigid wall): dp/dn = 0, mirror interior value
+            for (let iz = 0; iz < nz; iz++) {
+                for (let iy = 0; iy < ny; iy++) {
+                    p[this.idx(0, iy, iz)] = r * p[this.idx(1, iy, iz)];
+                    p[this.idx(nx - 1, iy, iz)] = r * p[this.idx(nx - 2, iy, iz)];
+                }
+            }
+            for (let iz = 0; iz < nz; iz++) {
+                for (let ix = 0; ix < nx; ix++) {
+                    p[this.idx(ix, 0, iz)] = r * p[this.idx(ix, 1, iz)];
+                    p[this.idx(ix, ny - 1, iz)] = r * p[this.idx(ix, ny - 2, iz)];
+                }
+            }
+            for (let iy = 0; iy < ny; iy++) {
+                for (let ix = 0; ix < nx; ix++) {
+                    p[this.idx(ix, iy, 0)] = r * p[this.idx(ix, iy, 1)];
+                    p[this.idx(ix, iy, nz - 1)] = r * p[this.idx(ix, iy, nz - 2)];
+                }
+            }
+        } else {
+            // Absorbing: Dirichlet p = 0
             for (let iz = 0; iz < nz; iz++) {
                 for (let iy = 0; iy < ny; iy++) {
                     p[this.idx(0, iy, iz)] = 0;
@@ -502,9 +511,13 @@ class InterpolatedWidebandFDTD extends BaseSolver {
         this.dt = this.sc * this.dres / this.c0;
         this.maxFreq = this.c0 / (2.0 * this.dres);
 
-        // IWB optimal coefficients (from Kowalczyk 2011)
-        this.a1 = 0.25;   // weight for diagonal-face coupling
-        this.a2 = 0.125;  // weight for diagonal-edge coupling
+        // IWB interpolation parameter d = 1 (Kowalczyk 2011)
+        // Scheme: L_d = (1-d)*L7 + d*L13  at Sc = 1
+        // Von Neumann analysis at k=(π,π,0): stability requires a1 >= 1/4
+        // a0 MUST be 1.0 for correct standard Laplacian weighting
+        // a1 = d/4 = cross-derivative weight
+        this.a0 = 1.0;
+        this.a1 = 0.25;  // d=1.0 -> d/4 = 0.25 (only stable choice at Sc=1)
 
         this.p = [
             new Float64Array(this.totalNodes),
@@ -532,8 +545,7 @@ class InterpolatedWidebandFDTD extends BaseSolver {
 
         for (const rec of this.receivers) rec.data.push(pC[rec.flatIdx]);
 
-        const a1 = this.a1, a2 = this.a2;
-        const a0 = 1.0 - 2.0 * a1 - a2;
+        const a0 = this.a0, a1 = this.a1;
 
         for (let iz = 1; iz < nz - 1; iz++) {
             for (let iy = 1; iy < ny - 1; iy++) {
@@ -570,22 +582,47 @@ class InterpolatedWidebandFDTD extends BaseSolver {
     _applyBC(tidx) {
         const nx = this.nx, ny = this.ny, nz = this.nz;
         const p = this.p[tidx];
-        for (let iz = 0; iz < nz; iz++) {
+        const r = this.wallReflection;
+
+        if (this.boundary === "reflective") {
+            // Neumann BC (rigid wall): mirror interior
+            for (let iz = 0; iz < nz; iz++) {
+                for (let iy = 0; iy < ny; iy++) {
+                    p[this.idx(0, iy, iz)] = r * p[this.idx(1, iy, iz)];
+                    p[this.idx(nx - 1, iy, iz)] = r * p[this.idx(nx - 2, iy, iz)];
+                }
+            }
+            for (let iz = 0; iz < nz; iz++) {
+                for (let ix = 0; ix < nx; ix++) {
+                    p[this.idx(ix, 0, iz)] = r * p[this.idx(ix, 1, iz)];
+                    p[this.idx(ix, ny - 1, iz)] = r * p[this.idx(ix, ny - 2, iz)];
+                }
+            }
             for (let iy = 0; iy < ny; iy++) {
-                p[this.idx(0, iy, iz)] = 0;
-                p[this.idx(nx - 1, iy, iz)] = 0;
+                for (let ix = 0; ix < nx; ix++) {
+                    p[this.idx(ix, iy, 0)] = r * p[this.idx(ix, iy, 1)];
+                    p[this.idx(ix, iy, nz - 1)] = r * p[this.idx(ix, iy, nz - 2)];
+                }
             }
-        }
-        for (let iz = 0; iz < nz; iz++) {
-            for (let ix = 0; ix < nx; ix++) {
-                p[this.idx(ix, 0, iz)] = 0;
-                p[this.idx(ix, ny - 1, iz)] = 0;
+        } else {
+            // Absorbing: Dirichlet p = 0
+            for (let iz = 0; iz < nz; iz++) {
+                for (let iy = 0; iy < ny; iy++) {
+                    p[this.idx(0, iy, iz)] = 0;
+                    p[this.idx(nx - 1, iy, iz)] = 0;
+                }
             }
-        }
-        for (let iy = 0; iy < ny; iy++) {
-            for (let ix = 0; ix < nx; ix++) {
-                p[this.idx(ix, iy, 0)] = 0;
-                p[this.idx(ix, iy, nz - 1)] = 0;
+            for (let iz = 0; iz < nz; iz++) {
+                for (let ix = 0; ix < nx; ix++) {
+                    p[this.idx(ix, 0, iz)] = 0;
+                    p[this.idx(ix, ny - 1, iz)] = 0;
+                }
+            }
+            for (let iy = 0; iy < ny; iy++) {
+                for (let ix = 0; ix < nx; ix++) {
+                    p[this.idx(ix, iy, 0)] = 0;
+                    p[this.idx(ix, iy, nz - 1)] = 0;
+                }
             }
         }
     }
@@ -650,17 +687,7 @@ class RectilinearDWM extends BaseSolver {
         const nx = this.nx, ny = this.ny, nz = this.nz;
         const N = this.totalNodes;
 
-        // Inject sources
-        for (const src of this.sources) {
-            const val = this.sourceValue(src);
-            if (src.injection === "soft") this.pJunction[src.flatIdx] += val;
-            else this.pJunction[src.flatIdx] = val;
-        }
-
-        // Record receivers
-        for (const rec of this.receivers) rec.data.push(this.pJunction[rec.flatIdx]);
-
-        // Compute junction pressures from incoming waves
+        // 1. Compute junction pressures from incoming waves
         for (let i = 0; i < N; i++) {
             let sum = 0;
             for (let d = 0; d < 6; d++) {
@@ -669,7 +696,17 @@ class RectilinearDWM extends BaseSolver {
             this.pJunction[i] = sum / 3.0; // 6 ports, scattering coeff = 2/6 = 1/3
         }
 
-        // Compute outgoing waves from junction pressure
+        // 2. Inject sources (AFTER junction computation so source drives the field)
+        for (const src of this.sources) {
+            const val = this.sourceValue(src);
+            if (src.injection === "soft") this.pJunction[src.flatIdx] += val;
+            else this.pJunction[src.flatIdx] = val;
+        }
+
+        // 3. Record receivers
+        for (const rec of this.receivers) rec.data.push(this.pJunction[rec.flatIdx]);
+
+        // 4. Compute outgoing waves from junction pressure (includes source contribution)
         for (let i = 0; i < N; i++) {
             const pJ = this.pJunction[i];
             for (let d = 0; d < 6; d++) {
@@ -677,8 +714,10 @@ class RectilinearDWM extends BaseSolver {
             }
         }
 
-        // Propagate: outgoing from one node becomes incoming to neighbour
+        // 5. Propagate: outgoing from one node becomes incoming to neighbour
         const newWaveIn = new Float64Array(N * 6);
+        // Reflection coefficient: +R for rigid (reflective), 0 for absorbing
+        const R = this.boundary === "absorbing" ? 0 : this.wallReflection;
 
         for (let iz = 0; iz < nz; iz++) {
             for (let iy = 0; iy < ny; iy++) {
@@ -688,32 +727,32 @@ class RectilinearDWM extends BaseSolver {
                     // Direction 0: +x -> neighbour at ix+1, incoming from -x (dir 1)
                     if (ix < nx - 1) newWaveIn[(i + 1) * 6 + 1] = this.waveOut[i * 6 + 0];
                     else if (this.boundary === "periodic") newWaveIn[(iy * nx + iz * nx * ny) * 6 + 1] = this.waveOut[i * 6 + 0];
-                    else newWaveIn[i * 6 + 0] = -this.waveOut[i * 6 + 0] * this.wallReflection;
+                    else newWaveIn[i * 6 + 0] = this.waveOut[i * 6 + 0] * R;
 
                     // Direction 1: -x -> neighbour at ix-1, incoming from +x (dir 0)
                     if (ix > 0) newWaveIn[(i - 1) * 6 + 0] = this.waveOut[i * 6 + 1];
                     else if (this.boundary === "periodic") newWaveIn[((nx - 1) + iy * nx + iz * nx * ny) * 6 + 0] = this.waveOut[i * 6 + 1];
-                    else newWaveIn[i * 6 + 1] = -this.waveOut[i * 6 + 1] * this.wallReflection;
+                    else newWaveIn[i * 6 + 1] = this.waveOut[i * 6 + 1] * R;
 
                     // Direction 2: +y
                     if (iy < ny - 1) newWaveIn[(i + nx) * 6 + 3] = this.waveOut[i * 6 + 2];
                     else if (this.boundary === "periodic") newWaveIn[(ix + iz * nx * ny) * 6 + 3] = this.waveOut[i * 6 + 2];
-                    else newWaveIn[i * 6 + 2] = -this.waveOut[i * 6 + 2] * this.wallReflection;
+                    else newWaveIn[i * 6 + 2] = this.waveOut[i * 6 + 2] * R;
 
                     // Direction 3: -y
                     if (iy > 0) newWaveIn[(i - nx) * 6 + 2] = this.waveOut[i * 6 + 3];
                     else if (this.boundary === "periodic") newWaveIn[(ix + (ny - 1) * nx + iz * nx * ny) * 6 + 2] = this.waveOut[i * 6 + 3];
-                    else newWaveIn[i * 6 + 3] = -this.waveOut[i * 6 + 3] * this.wallReflection;
+                    else newWaveIn[i * 6 + 3] = this.waveOut[i * 6 + 3] * R;
 
                     // Direction 4: +z
                     if (iz < nz - 1) newWaveIn[(i + nx * ny) * 6 + 5] = this.waveOut[i * 6 + 4];
                     else if (this.boundary === "periodic") newWaveIn[(ix + iy * nx) * 6 + 5] = this.waveOut[i * 6 + 4];
-                    else newWaveIn[i * 6 + 4] = -this.waveOut[i * 6 + 4] * this.wallReflection;
+                    else newWaveIn[i * 6 + 4] = this.waveOut[i * 6 + 4] * R;
 
                     // Direction 5: -z
                     if (iz > 0) newWaveIn[(i - nx * ny) * 6 + 4] = this.waveOut[i * 6 + 5];
                     else if (this.boundary === "periodic") newWaveIn[(ix + iy * nx + (nz - 1) * nx * ny) * 6 + 4] = this.waveOut[i * 6 + 5];
-                    else newWaveIn[i * 6 + 5] = -this.waveOut[i * 6 + 5] * this.wallReflection;
+                    else newWaveIn[i * 6 + 5] = this.waveOut[i * 6 + 5] * R;
                 }
             }
         }
@@ -768,9 +807,10 @@ class HighOrderFDTD extends BaseSolver {
     constructor(config) {
         super(config);
         this.name = "High-Order FDTD (O4 Spatial)";
-        // CFL for 4th-order in 3D: dt <= dx / (c * sqrt(3) * sqrt(16/12))
-        this.sc = 0.4;
-        this.dt = Math.sqrt(3) * this.sc * this.dres / this.c0;
+        // CFL for 4th-order staggered in 3D: Sc <= 2*sqrt(3)/7 ~ 0.4949
+        // Use physical Courant number directly: Sc = c0*dt/dx = sc
+        this.sc = 0.45;
+        this.dt = this.sc * this.dres / this.c0;
         this.maxFreq = this.c0 / (2.5 * this.dres);
 
         this.p = [new Float64Array(this.totalNodes), new Float64Array(this.totalNodes)];
