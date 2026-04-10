@@ -11,90 +11,135 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         .hero {
-            min-height: 70vh;
+            min-height: 65vh;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             text-align: center;
-            padding: 3rem 2rem;
-            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+            padding: 4rem 2rem;
+            background: radial-gradient(ellipse at 50% 30%, rgba(14, 165, 233, 0.06) 0%, transparent 70%),
+                        linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
             border-bottom: 1px solid var(--border);
+            position: relative;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 40px,
+                rgba(14, 165, 233, 0.02) 40px,
+                rgba(14, 165, 233, 0.02) 41px
+            );
+            pointer-events: none;
         }
 
         .hero h1 {
-            font-size: 3.5rem;
+            font-size: 3.2rem;
             font-weight: 700;
-            background: linear-gradient(135deg, var(--accent), #a855f7);
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, var(--accent), var(--accent-purple));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
             margin-bottom: 1rem;
+            position: relative;
+        }
+
+        .hero .tagline {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+            font-weight: 500;
         }
 
         .hero p {
-            font-size: 1.25rem;
+            font-size: 1.1rem;
             color: var(--text-secondary);
-            max-width: 700px;
+            max-width: 640px;
             margin: 0 auto 2rem;
             line-height: 1.8;
         }
 
         .hero .cta-buttons {
             display: flex;
-            gap: 1rem;
+            gap: 0.8rem;
             flex-wrap: wrap;
             justify-content: center;
-            margin-top: 2rem;
+            margin-top: 1.5rem;
         }
 
         .hero .btn {
-            padding: 0.9rem 2rem;
-            font-size: 1.05rem;
+            padding: 0.75rem 1.8rem;
+            font-size: 0.95rem;
         }
 
         .features {
             padding: 4rem 2rem;
-            max-width: 1200px;
+            max-width: 1100px;
             margin: 0 auto;
         }
 
-        .features h2 {
+        .section-title {
             text-align: center;
-            font-size: 2.5rem;
-            margin-bottom: 3rem;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
             color: var(--text-primary);
+            letter-spacing: -0.02em;
+            font-weight: 700;
+        }
+
+        .section-subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 2.5rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .feature-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
+            gap: 1.2rem;
         }
 
         .feature-card {
             background: var(--bg-secondary);
             border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 2rem;
-            transition: all 0.3s;
+            border-radius: var(--radius-lg);
+            padding: 1.8rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .feature-card:hover {
-            border-color: var(--accent);
-            transform: translateY(-4px);
-            box-shadow: var(--shadow);
+            border-color: var(--accent-dim);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px var(--accent-dim);
         }
 
         .feature-card h3 {
-            font-size: 1.4rem;
+            font-size: 1.15rem;
             color: var(--accent);
-            margin-bottom: 1rem;
+            margin-bottom: 0.7rem;
+            font-weight: 600;
+            letter-spacing: -0.01em;
         }
 
         .feature-card p {
             color: var(--text-secondary);
-            line-height: 1.6;
+            line-height: 1.7;
+            font-size: 0.9rem;
         }
 
         .applications {
@@ -105,59 +150,59 @@
         }
 
         .applications-content {
-            max-width: 1200px;
+            max-width: 1100px;
             margin: 0 auto;
-        }
-
-        .applications h2 {
-            text-align: center;
-            font-size: 2.5rem;
-            margin-bottom: 2rem;
-            color: var(--text-primary);
         }
 
         .applications-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem;
             margin-top: 2rem;
         }
 
         .app-item {
-            background: var(--bg-panel);
+            background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: var(--radius);
-            padding: 1.5rem;
+            padding: 1.4rem;
+            transition: border-color 0.2s;
+        }
+
+        .app-item:hover {
+            border-color: var(--accent-dim);
         }
 
         .app-item h4 {
             color: var(--accent);
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.4rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .app-item p {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
         }
 
         .about {
             padding: 4rem 2rem;
-            max-width: 900px;
+            max-width: 800px;
             margin: 0 auto;
-        }
-
-        .about h2 {
-            text-align: center;
-            font-size: 2.5rem;
-            margin-bottom: 2rem;
-            color: var(--text-primary);
         }
 
         .about p {
             color: var(--text-secondary);
             line-height: 1.8;
             margin-bottom: 1.5rem;
+            font-size: 0.95rem;
         }
 
         .method-overview {
             background: var(--bg-secondary);
             border: 1px solid var(--border);
-            border-radius: var(--radius);
+            border-radius: var(--radius-lg);
             padding: 2rem;
             margin: 2rem 0;
         }
@@ -193,6 +238,7 @@
     <div class="header-links">
         <a href="index.html">Home</a>
         <a href="simulator.html">Simulator</a>
+        <a href="benchmark.html">Benchmark</a>
         <a href="documentation.html">Documentation</a>
         <a href="https://github.com/dot-gabriel-ferrer/AcousticFDTD" target="_blank">GitHub</a>
     </div>
@@ -200,21 +246,24 @@
 
 <!-- Hero Section -->
 <section class="hero">
+    <div class="tagline">Finite-Difference Time-Domain Method</div>
     <h1>AcousticFDTD</h1>
     <p>
-        A professional-grade 3D acoustic wave propagation simulator implementing the Finite-Difference Time-Domain (FDTD) method.
-        Designed for researchers, engineers, and acousticians working in room acoustics, underwater acoustics, and bioacoustics.
+        Professional-grade 3D acoustic wave propagation simulator for research, engineering,
+        and education. Room acoustics, underwater acoustics, and bioacoustics -- all in your browser.
     </p>
     <div class="cta-buttons">
         <a href="simulator.html" class="btn btn-primary">Launch Simulator</a>
-        <a href="documentation.html" class="btn">Read Documentation</a>
-        <a href="https://github.com/dot-gabriel-ferrer/AcousticFDTD" target="_blank" class="btn">View on GitHub</a>
+        <a href="benchmark.html" class="btn">Benchmark</a>
+        <a href="documentation.html" class="btn">Documentation</a>
+        <a href="https://github.com/dot-gabriel-ferrer/AcousticFDTD" target="_blank" class="btn">GitHub</a>
     </div>
 </section>
 
 <!-- Features Section -->
 <section class="features">
-    <h2>Key Features</h2>
+    <h2 class="section-title">Capabilities</h2>
+    <p class="section-subtitle">A complete toolkit for computational acoustics -- from simulation to analysis.</p>
     <div class="feature-grid">
         <div class="feature-card">
             <h3>3D Visualization</h3>
@@ -235,8 +284,9 @@
         <div class="feature-card">
             <h3>Advanced Algorithms</h3>
             <p>
-                Choose from multiple propagation algorithms optimized for different scenarios.
-                FDTD for general purpose, and specialized algorithms for large spaces and long-duration simulations.
+                Five propagation algorithms: Standard FDTD, Compact (KW), Interpolated Wideband,
+                Digital Waveguide Mesh, and High-Order O(4,2). Compare them in the
+                <a href="benchmark.html" style="color: var(--accent)">benchmark suite</a>.
             </p>
         </div>
 
@@ -293,9 +343,9 @@
 <!-- Applications Section -->
 <section class="applications">
     <div class="applications-content">
-        <h2>Applications</h2>
-        <p style="text-align: center; color: var(--text-secondary); max-width: 800px; margin: 0 auto 2rem;">
-            AcousticFDTD is designed for a wide range of professional and research applications in acoustics and wave propagation.
+        <h2 class="section-title">Applications</h2>
+        <p class="section-subtitle">
+            Designed for a wide range of professional and research applications in acoustics and wave propagation.
         </p>
         <div class="applications-grid">
             <div class="app-item">
@@ -328,7 +378,7 @@
 
 <!-- About Section -->
 <section class="about">
-    <h2>About the Method</h2>
+    <h2 class="section-title">About the Method</h2>
     <p>
         The Finite-Difference Time-Domain (FDTD) method is a well-established numerical technique for solving
         partial differential equations describing wave propagation. This implementation solves the linearized
@@ -354,7 +404,7 @@
     </p>
 
     <p style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--border);">
-        <strong>Author:</strong> Elías Gabriel Ferrer Jorge<br>
+        <strong>Author:</strong> Elias Gabriel Ferrer Jorge<br>
         <strong>Project:</strong> Acoustic Simulations Research<br>
         <strong>License:</strong> MIT License
     </p>
@@ -362,8 +412,8 @@
 
 <!-- Footer -->
 <footer class="footer">
-    AcousticFDTD — Professional 3D Acoustic Wave Simulator · FDTD Method ·
-    Author: Elías Gabriel Ferrer Jorge ·
+    AcousticFDTD -- Professional 3D Acoustic Wave Simulator | FDTD Method |
+    Author: Elias Gabriel Ferrer Jorge |
     <a href="https://github.com/dot-gabriel-ferrer/AcousticFDTD" style="color: var(--accent)">GitHub Repository</a>
 </footer>
 

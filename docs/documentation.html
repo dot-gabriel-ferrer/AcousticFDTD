@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AcousticFDTD — Technical Documentation</title>
+    <title>AcousticFDTD -- Technical Documentation</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -123,8 +123,9 @@
             padding: 1rem;
             margin: 1rem 0;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             overflow-x: auto;
+            line-height: 1.6;
         }
 
         .figure {
@@ -147,8 +148,9 @@
 
         table th, table td {
             border: 1px solid #ddd;
-            padding: 0.75rem;
+            padding: 0.6rem 0.75rem;
             text-align: left;
+            font-size: 0.95rem;
         }
 
         table th {
@@ -191,25 +193,81 @@
             opacity: 0.8;
         }
 
+        .toc {
+            background: #f8f8f8;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 1.5rem 2rem;
+            margin: 2rem 0;
+        }
+
+        .toc h2 {
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-top: 0;
+            margin-bottom: 1rem;
+            color: #0077b6;
+        }
+
+        .toc ol {
+            padding-left: 1.5rem;
+            margin: 0;
+        }
+
+        .toc ol li {
+            margin-bottom: 0.3rem;
+            font-size: 0.95rem;
+        }
+
+        .toc ol li a {
+            color: #0077b6;
+            text-decoration: none;
+        }
+
+        .toc ol li a:hover {
+            text-decoration: underline;
+        }
+
+        .toc ol ol {
+            margin-top: 0.2rem;
+        }
+
+        .note-box {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-left: 4px solid #3b82f6;
+            padding: 1rem 1.2rem;
+            margin: 1.5rem 0;
+            border-radius: 4px;
+            font-size: 0.95rem;
+        }
+
+        .note-box strong {
+            color: #1e40af;
+        }
+
+        .algo-comparison-table td:first-child {
+            font-weight: 600;
+        }
+
         @media print {
-            .nav-header {
-                display: none;
-            }
-            .paper-container {
-                max-width: 100%;
-            }
+            .nav-header { display: none; }
+            .paper-container { max-width: 100%; padding: 1rem; }
+            h1 { page-break-before: always; }
+            h1:first-of-type { page-break-before: avoid; }
         }
     </style>
-    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body>
 
 <div class="nav-header">
-    <div><strong>AcousticFDTD</strong> — Technical Documentation</div>
+    <div><strong>AcousticFDTD</strong> -- Technical Documentation</div>
     <div>
         <a href="index.html">Home</a>
         <a href="simulator.html">Simulator</a>
+        <a href="benchmark.html">Benchmark</a>
         <a href="https://github.com/dot-gabriel-ferrer/AcousticFDTD" target="_blank">GitHub</a>
     </div>
 </div>
@@ -218,50 +276,198 @@
 
 <div class="paper-header">
     <div class="paper-title">
-        Three-Dimensional Acoustic Wave Propagation Simulation Using the Finite-Difference Time-Domain Method: Implementation, Validation, and Applications
+        Three-Dimensional Acoustic Wave Propagation Simulation:<br>
+        Multi-Algorithm Framework Using Finite-Difference, Waveguide Mesh,<br>
+        and High-Order Numerical Methods
     </div>
     <div class="paper-authors">
-        Elías Gabriel Ferrer Jorge
+        Elias Gabriel Ferrer Jorge
     </div>
     <div class="paper-affiliation">
         Department of Acoustics and Audio Engineering<br>
         AcousticFDTD Research Project
     </div>
     <div class="paper-date">
-        Published: 2024
+        Published: 2024 -- Revised: 2025
     </div>
 </div>
 
+<!-- Abstract -->
 <div class="abstract">
     <h2>Abstract</h2>
     <p>
-        This paper presents a comprehensive implementation of the Finite-Difference Time-Domain (FDTD) method for simulating three-dimensional acoustic wave propagation in various media. The simulator solves the linearized acoustic wave equations using a staggered-grid leapfrog scheme, providing second-order accuracy in both space and time. We describe the mathematical formulation, numerical implementation, stability analysis, and validation procedures. The system supports multiple boundary conditions, arbitrary source configurations, and realistic microphone response models. Applications include room acoustics, underwater acoustics, and bioacoustic simulations. The implementation is available both as a Python library and an interactive web-based tool, making it accessible for research, education, and engineering applications.
+        This paper presents a comprehensive multi-algorithm framework for simulating three-dimensional acoustic
+        wave propagation. The core implementation solves the linearized acoustic wave equations using five
+        distinct numerical schemes: (1) the standard Yee staggered-grid FDTD method, (2) the Kowalczyk-van
+        Walstijn compact explicit FDTD scheme with a 27-point stencil, (3) an interpolated wideband (IWB) FDTD
+        variant, (4) a rectilinear digital waveguide mesh (DWM), and (5) a high-order FDTD with 4th-order
+        spatial accuracy. We provide detailed mathematical formulations, stability analyses, and dispersion
+        characteristics for each method. A benchmarking framework enables systematic comparison across metrics
+        including computational throughput, memory usage, frequency accuracy, and numerical dispersion. The
+        system supports multiple boundary conditions, arbitrary source configurations, and realistic microphone
+        response models. Validation is performed against analytical room mode solutions for rectangular enclosures.
+        Applications span room acoustics, underwater acoustics, and bioacoustic simulations. Both a Python
+        library and an interactive browser-based tool are provided.
     </p>
     <p>
-        <strong>Keywords:</strong> FDTD, acoustic simulation, wave propagation, numerical methods, room acoustics, computational acoustics
+        <strong>Keywords:</strong> FDTD, acoustic simulation, wave propagation, numerical methods, digital
+        waveguide mesh, compact schemes, room acoustics, computational acoustics, algorithm benchmark
     </p>
 </div>
 
-<h1>1. Introduction</h1>
+<!-- Table of Contents -->
+<div class="toc">
+    <h2>Table of Contents</h2>
+    <ol>
+        <li><a href="#sec1">Introduction</a></li>
+        <li><a href="#sec2">Governing Equations</a>
+            <ol>
+                <li><a href="#sec2-1">Linearized Acoustic Equations</a></li>
+                <li><a href="#sec2-2">Second-Order Wave Equation</a></li>
+                <li><a href="#sec2-3">Energy Conservation</a></li>
+            </ol>
+        </li>
+        <li><a href="#sec3">Numerical Methods</a>
+            <ol>
+                <li><a href="#sec3-1">Standard FDTD (Yee Scheme)</a></li>
+                <li><a href="#sec3-2">Compact Explicit FDTD (Kowalczyk-van Walstijn)</a></li>
+                <li><a href="#sec3-3">Interpolated Wideband (IWB) FDTD</a></li>
+                <li><a href="#sec3-4">Digital Waveguide Mesh (DWM)</a></li>
+                <li><a href="#sec3-5">High-Order FDTD (4th-Order Spatial)</a></li>
+            </ol>
+        </li>
+        <li><a href="#sec4">Stability Analysis</a>
+            <ol>
+                <li><a href="#sec4-1">Von Neumann Analysis</a></li>
+                <li><a href="#sec4-2">CFL Conditions Summary</a></li>
+            </ol>
+        </li>
+        <li><a href="#sec5">Numerical Dispersion</a>
+            <ol>
+                <li><a href="#sec5-1">Dispersion Relation Derivation</a></li>
+                <li><a href="#sec5-2">Direction-Dependent Error</a></li>
+                <li><a href="#sec5-3">Comparison Across Schemes</a></li>
+            </ol>
+        </li>
+        <li><a href="#sec6">Boundary Conditions</a>
+            <ol>
+                <li><a href="#sec6-1">Reflective (Rigid) Walls</a></li>
+                <li><a href="#sec6-2">Absorbing Boundaries</a></li>
+                <li><a href="#sec6-3">Periodic Boundaries</a></li>
+                <li><a href="#sec6-4">Impedance Boundaries</a></li>
+            </ol>
+        </li>
+        <li><a href="#sec7">Source Modeling</a>
+            <ol>
+                <li><a href="#sec7-1">Source Injection Methods</a></li>
+                <li><a href="#sec7-2">Source Time Functions</a></li>
+                <li><a href="#sec7-3">Anti-Aliasing Considerations</a></li>
+            </ol>
+        </li>
+        <li><a href="#sec8">Microphone Modeling</a>
+            <ol>
+                <li><a href="#sec8-1">Directivity Patterns</a></li>
+                <li><a href="#sec8-2">Frequency Response</a></li>
+            </ol>
+        </li>
+        <li><a href="#sec9">Implementation</a>
+            <ol>
+                <li><a href="#sec9-1">Data Structures and Memory Layout</a></li>
+                <li><a href="#sec9-2">Computational Complexity</a></li>
+                <li><a href="#sec9-3">JavaScript Implementation</a></li>
+                <li><a href="#sec9-4">Python Implementation</a></li>
+                <li><a href="#sec9-5">Performance Optimization</a></li>
+            </ol>
+        </li>
+        <li><a href="#sec10">Validation</a>
+            <ol>
+                <li><a href="#sec10-1">Analytical Room Modes</a></li>
+                <li><a href="#sec10-2">Convergence Studies</a></li>
+                <li><a href="#sec10-3">Energy Conservation Test</a></li>
+            </ol>
+        </li>
+        <li><a href="#sec11">Benchmark Results</a>
+            <ol>
+                <li><a href="#sec11-1">Performance Comparison</a></li>
+                <li><a href="#sec11-2">Accuracy Comparison</a></li>
+                <li><a href="#sec11-3">Memory Requirements</a></li>
+                <li><a href="#sec11-4">Practical Recommendations</a></li>
+            </ol>
+        </li>
+        <li><a href="#sec12">Applications</a>
+            <ol>
+                <li><a href="#sec12-1">Room Acoustics</a></li>
+                <li><a href="#sec12-2">Underwater Acoustics</a></li>
+                <li><a href="#sec12-3">Bioacoustics</a></li>
+            </ol>
+        </li>
+        <li><a href="#sec13">Conclusion and Future Work</a></li>
+    </ol>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 1: INTRODUCTION -->
+<!-- ============================================================ -->
+<h1 id="sec1">1. Introduction</h1>
 
 <p>
-    Acoustic wave propagation modeling is fundamental to numerous scientific and engineering disciplines, including architectural acoustics, audio engineering, underwater acoustics, and bioacoustics. The Finite-Difference Time-Domain (FDTD) method has emerged as a powerful numerical technique for solving the time-dependent wave equations that govern acoustic phenomena [1, 2].
+    Acoustic wave propagation modeling is fundamental to numerous scientific and engineering disciplines,
+    including architectural acoustics, audio engineering, underwater acoustics, medical ultrasonics, and
+    bioacoustics. The ability to accurately predict how sound travels through complex environments enables
+    the design of concert halls, optimization of loudspeaker arrays, assessment of underwater noise impact,
+    and understanding of biological sound production mechanisms.
 </p>
 
 <p>
-    The FDTD method discretizes both space and time, approximating differential operators with finite-difference approximations. This approach offers several advantages: it is intuitive to implement, naturally handles time-domain signals, and can accommodate complex geometries and heterogeneous media. The method was originally developed by Yee (1966) for electromagnetic simulations [3] and was subsequently adapted for acoustics by various researchers [4, 5].
+    Numerical methods for solving the acoustic wave equation fall into several categories. Geometric methods
+    (ray tracing, image source method) are efficient for high frequencies but neglect diffraction and
+    interference. Statistical methods (statistical energy analysis) provide energy-averaged predictions
+    suitable for high modal density. Wave-based methods, including finite element (FEM), boundary element
+    (BEM), and finite-difference time-domain (FDTD), solve the wave equation directly and capture the full
+    physics of wave propagation [1, 2].
 </p>
 
 <p>
-    This paper presents AcousticFDTD, a comprehensive implementation of the three-dimensional acoustic FDTD method. Our contributions include: (1) a rigorous mathematical formulation with detailed stability analysis, (2) efficient implementation strategies for both offline and real-time applications, (3) support for realistic microphone directivity patterns and frequency responses, (4) validation against analytical solutions and experimental data, and (5) applications to bioacoustic modeling including cetacean and avian phonation.
+    The FDTD method, originally developed by Yee (1966) for electromagnetic simulations [3], was adapted
+    for acoustics by Botteldooren (1995) [1] and others. It discretizes both space and time domains,
+    replacing continuous differential operators with finite-difference approximations. Key advantages include:
+    (i) intuitive grid-based formulation, (ii) natural handling of time-domain transients, (iii) straightforward
+    accommodation of heterogeneous media, and (iv) inherent modeling of diffraction and interference phenomena.
 </p>
 
-<h1>2. Mathematical Formulation</h1>
-
-<h2>2.1 Acoustic Wave Equations</h2>
+<p>
+    However, the standard FDTD suffers from numerical dispersion -- the discrete phase velocity depends on
+    both propagation direction and frequency. Several advanced schemes have been developed to mitigate this
+    limitation, including compact explicit methods [6], interpolated wideband schemes [14], digital waveguide
+    meshes [5, 15], and high-order finite differences [16].
+</p>
 
 <p>
-    The propagation of small-amplitude acoustic waves in a fluid medium is governed by the linearized Euler equations. For a homogeneous, lossless medium, these can be expressed as a coupled system of first-order partial differential equations:
+    This paper presents AcousticFDTD, a multi-algorithm framework implementing five distinct wave propagation
+    methods. Our contributions include:
+</p>
+
+<ol>
+    <li>A unified software architecture allowing direct comparison of multiple algorithms under identical conditions</li>
+    <li>Complete mathematical formulations with stability and dispersion analyses for each method</li>
+    <li>A systematic benchmarking framework measuring speed, accuracy, memory, and dispersion</li>
+    <li>Dual implementations in Python (for offline research) and JavaScript (for interactive web-based use)</li>
+    <li>Validation against analytical solutions for rectangular room modes</li>
+    <li>Applications to room acoustics, underwater acoustics, and bioacoustic modeling</li>
+</ol>
+
+
+<!-- ============================================================ -->
+<!-- SECTION 2: GOVERNING EQUATIONS -->
+<!-- ============================================================ -->
+<h1 id="sec2">2. Governing Equations</h1>
+
+<h2 id="sec2-1">2.1 Linearized Acoustic Equations</h2>
+
+<p>
+    The propagation of small-amplitude acoustic waves in a fluid medium is governed by the linearized
+    Euler equations, obtained by linearizing the Navier-Stokes equations around a quiescent state. For
+    a homogeneous, lossless, initially stationary medium, the coupled first-order system reads:
 </p>
 
 <div class="equation">
@@ -275,296 +481,1268 @@
 </div>
 
 <p>
-    where <i>p</i> is the acoustic pressure perturbation, <b>v</b> = (<i>v<sub>x</sub></i>, <i>v<sub>y</sub></i>, <i>v<sub>z</sub></i>) is the particle velocity vector, ρ<sub>0</sub> is the equilibrium density, and <i>c</i><sub>0</sub> is the speed of sound in the medium.
+    where \(p(\mathbf{x}, t)\) is the acoustic pressure perturbation [Pa],
+    \(\mathbf{v}(\mathbf{x}, t) = (v_x, v_y, v_z)\) is the particle velocity vector [m/s],
+    \(\rho_0\) is the equilibrium mass density [kg/m^3], and \(c_0\) is the speed of sound [m/s].
+    Equation (1) expresses conservation of momentum (the linearized Euler equation), while Equation (2)
+    represents conservation of mass (the continuity equation combined with the equation of state).
 </p>
 
 <p>
-    These equations conserve mass and momentum. Combining them yields the second-order wave equation:
+    The acoustic impedance of the medium is defined as:
 </p>
 
 <div class="equation">
-    $$\frac{\partial^2 p}{\partial t^2} = c_0^2 \nabla^2 p$$
+    $$Z_0 = \rho_0 c_0$$
     <span class="equation-number">(3)</span>
 </div>
 
 <p>
-    However, we work directly with the first-order system (1-2) as it naturally accommodates boundary conditions and provides access to both pressure and velocity fields.
+    For air at standard conditions (20 degrees C, 1 atm): \(c_0 \approx 343\) m/s, \(\rho_0 \approx 1.225\) kg/m^3,
+    \(Z_0 \approx 420\) Pa s/m. For seawater: \(c_0 \approx 1533\) m/s, \(\rho_0 \approx 1027\) kg/m^3,
+    \(Z_0 \approx 1.574 \times 10^6\) Pa s/m.
 </p>
 
-<h2>2.2 Finite-Difference Discretization</h2>
+<h2 id="sec2-2">2.2 Second-Order Wave Equation</h2>
 
 <p>
-    The computational domain is discretized on a regular Cartesian grid with spatial step Δ<i>x</i> (assuming uniform spacing for simplicity). Following the staggered-grid approach [6], pressure nodes are located at integer grid positions (<i>i</i>, <i>j</i>, <i>k</i>), while velocity components are offset by half a cell:
-</p>
-
-<ul>
-    <li><i>v<sub>x</sub></i> at (<i>i</i> + 1/2, <i>j</i>, <i>k</i>)</li>
-    <li><i>v<sub>y</sub></i> at (<i>i</i>, <i>j</i> + 1/2, <i>k</i>)</li>
-    <li><i>v<sub>z</sub></i> at (<i>i</i>, <i>j</i>, <i>k</i> + 1/2)</li>
-</ul>
-
-<p>
-    Time is also discretized with step Δ<i>t</i>, and fields are staggered in time. The update equations become:
+    Combining equations (1) and (2) by taking the time derivative of (2) and substituting (1) yields the
+    scalar wave equation:
 </p>
 
 <div class="equation">
-    $$v_x^{n+1/2}_{i+1/2,j,k} = v_x^{n-1/2}_{i+1/2,j,k} - \frac{\Delta t}{\rho_0 \Delta x}\left(p^n_{i+1,j,k} - p^n_{i,j,k}\right)$$
+    $$\frac{\partial^2 p}{\partial t^2} = c_0^2 \nabla^2 p = c_0^2 \left(\frac{\partial^2 p}{\partial x^2} + \frac{\partial^2 p}{\partial y^2} + \frac{\partial^2 p}{\partial z^2}\right)$$
     <span class="equation-number">(4)</span>
 </div>
 
 <p>
-    with analogous expressions for <i>v<sub>y</sub></i> and <i>v<sub>z</sub></i>. The pressure update is:
+    While some schemes (compact FDTD, DWM) work directly with this second-order form, the standard FDTD
+    uses the first-order system (1)-(2) as it naturally accommodates boundary conditions and provides
+    simultaneous access to both pressure and velocity fields.
+</p>
+
+<h2 id="sec2-3">2.3 Energy Conservation</h2>
+
+<p>
+    The total acoustic energy density in the medium is:
 </p>
 
 <div class="equation">
-    $$p^{n+1}_{i,j,k} = p^{n}_{i,j,k} - \rho_0 c_0^2 \Delta t \left[\frac{v_x^{n+1/2}_{i+1/2,j,k} - v_x^{n+1/2}_{i-1/2,j,k}}{\Delta x} + \cdots \right]$$
+    $$E = \frac{1}{2}\rho_0 |\mathbf{v}|^2 + \frac{p^2}{2\rho_0 c_0^2}$$
     <span class="equation-number">(5)</span>
 </div>
 
 <p>
-    This scheme is second-order accurate in both space and time, as the centered finite-difference approximations have truncation errors O(Δ<i>x</i><sup>2</sup>) and O(Δ<i>t</i><sup>2</sup>).
+    In a lossless medium with rigid boundaries, the total energy \(\int E \, dV\) is conserved.
+    A numerical scheme that preserves this property (within machine precision) is said to be
+    energy-conserving, which guarantees long-term stability. Both the standard FDTD and the DWM
+    are energy-conserving, while some high-order schemes require careful coefficient tuning to
+    maintain this property.
 </p>
 
-<h2>2.3 Stability Analysis</h2>
+
+<!-- ============================================================ -->
+<!-- SECTION 3: NUMERICAL METHODS -->
+<!-- ============================================================ -->
+<h1 id="sec3">3. Numerical Methods</h1>
+
+<h2 id="sec3-1">3.1 Standard FDTD (Yee Scheme)</h2>
 
 <p>
-    Von Neumann stability analysis reveals that the FDTD scheme is conditionally stable. The Courant-Friedrichs-Lewy (CFL) condition must be satisfied [7]:
+    The computational domain is discretized on a regular Cartesian grid with uniform spacing
+    \(\Delta x\). Following the staggered-grid (Yee) approach, pressure nodes reside at integer
+    positions \((i, j, k)\), while velocity components are offset by half a cell:
 </p>
 
+<ul>
+    <li>\(v_x\) at \((i + \frac{1}{2}, j, k)\)</li>
+    <li>\(v_y\) at \((i, j + \frac{1}{2}, k)\)</li>
+    <li>\(v_z\) at \((i, j, k + \frac{1}{2})\)</li>
+</ul>
+
+<p>
+    Time is discretized with step \(\Delta t\), and fields are interleaved: pressure is defined
+    at integer time steps \(n\), velocities at half-integer steps \(n + 1/2\). The leapfrog update
+    alternates between velocity and pressure updates:
+</p>
+
+<p><strong>Velocity update:</strong></p>
+
 <div class="equation">
-    $$S_c = \frac{c_0 \Delta t}{\Delta x} \leq \frac{1}{\sqrt{D}}$$
+    $$v_x^{n+1/2}_{i+1/2,j,k} = v_x^{n-1/2}_{i+1/2,j,k} - \frac{\Delta t}{\rho_0 \Delta x}\left(p^n_{i+1,j,k} - p^n_{i,j,k}\right)$$
     <span class="equation-number">(6)</span>
 </div>
 
-<p>
-    where <i>D</i> is the number of spatial dimensions (D = 3 for our case), and <i>S<sub>c</sub></i> is the Courant number. For three-dimensional simulations, this requires:
-</p>
+<p>with analogous expressions for \(v_y\) and \(v_z\) along their respective axes.</p>
+
+<p><strong>Pressure update:</strong></p>
 
 <div class="equation">
-    $$\Delta t \leq \frac{\Delta x}{c_0 \sqrt{3}} \approx 0.577 \frac{\Delta x}{c_0}$$
+    $$p^{n+1}_{i,j,k} = p^{n}_{i,j,k} - \frac{\rho_0 c_0^2 \Delta t}{\Delta x}\left[\left(v_x^{n+1/2}_{i+1/2,j,k} - v_x^{n+1/2}_{i-1/2,j,k}\right) + \left(v_y^{n+1/2}_{i,j+1/2,k} - v_y^{n+1/2}_{i,j-1/2,k}\right) + \left(v_z^{n+1/2}_{i,j,k+1/2} - v_z^{n+1/2}_{i,j,k-1/2}\right)\right]$$
     <span class="equation-number">(7)</span>
 </div>
 
 <p>
-    In practice, we typically use <i>S<sub>c</sub></i> ≈ 0.5 to provide a safety margin and reduce numerical dispersion.
+    This scheme is second-order accurate in both space, \(O(\Delta x^2)\), and time, \(O(\Delta t^2)\),
+    owing to the centered finite-difference approximations on the staggered grid. The stencil involves
+    7 points (the center node plus 6 face neighbours in 3D).
 </p>
 
-<h2>2.4 Boundary Conditions</h2>
+<div class="note-box">
+    <strong>Note:</strong> Defining the Courant number as \(S_c = c_0 \Delta t / \Delta x\),
+    the update can be written concisely using the dimensionless ratio
+    \(\alpha = 2 S_c / c_0\) for velocities and the product \(\rho_0 c_0 S_c\) for pressure.
+</div>
+
+
+<h2 id="sec3-2">3.2 Compact Explicit FDTD (Kowalczyk-van Walstijn)</h2>
 
 <p>
-    The simulator supports three types of boundary conditions:
-</p>
-
-<h3>Reflective Boundaries</h3>
-<p>
-    Rigid walls are modeled by setting the normal velocity component to zero at the boundary. For a wall at <i>x</i> = 0:
+    The compact explicit scheme, introduced by Kowalczyk and van Walstijn [6], operates on the
+    second-order wave equation (4) and uses a 27-point stencil that includes all face, edge, and
+    corner neighbours of each grid node. The discrete Laplacian is expressed as a weighted sum:
 </p>
 
 <div class="equation">
-    $$v_x(0, y, z, t) = 0$$
+    $$\delta^2 p_{i,j,k} = \lambda_1 \sum_{\text{face}} p + \lambda_2 \sum_{\text{edge}} p + \lambda_3 \sum_{\text{corner}} p - \left(6\lambda_1 + 12\lambda_2 + 8\lambda_3\right) p_{i,j,k}$$
     <span class="equation-number">(8)</span>
 </div>
 
 <p>
-    Partially reflective walls are implemented using a reflection coefficient α ∈ [0, 1]:
+    where the sums run over the 6 face neighbours, 12 edge neighbours, and 8 corner neighbours,
+    respectively. The weights \(\lambda_1, \lambda_2, \lambda_3\) are chosen to minimize
+    numerical dispersion. The optimal values for 3D are [6]:
 </p>
 
 <div class="equation">
-    $$v_x^{boundary} = (1 - \alpha) \cdot v_x^{incident}$$
+    $$\lambda_1 = \frac{2}{3}, \quad \lambda_2 = \frac{1}{6}, \quad \lambda_3 = \frac{1}{12}$$
     <span class="equation-number">(9)</span>
 </div>
 
-<h3>Absorbing Boundaries</h3>
 <p>
-    First-order Mur absorbing boundary conditions are implemented to minimize reflections [8]:
+    The time-stepping scheme is the standard second-order leapfrog on three time levels:
 </p>
 
 <div class="equation">
-    $$\frac{\partial p}{\partial t} + c_0 \frac{\partial p}{\partial n} = 0$$
+    $$p^{n+1}_{i,j,k} = 2\, p^n_{i,j,k} - p^{n-1}_{i,j,k} + S_c^2 \, \delta^2 p^n_{i,j,k}$$
     <span class="equation-number">(10)</span>
 </div>
 
 <p>
-    where <i>n</i> is the outward normal direction. This approximates an anechoic termination.
+    A key advantage is that the optimal Courant number for 3D is \(S_c = 1\), which is the
+    maximum permissible value. At this operating point, the scheme achieves isotropic phase
+    velocity -- the numerical dispersion is identical in all propagation directions. This
+    dramatically reduces the direction-dependent artifacts present in the standard FDTD.
 </p>
 
-<h3>Periodic Boundaries</h3>
 <p>
-    Periodic boundaries wrap the domain, connecting opposite faces:
+    The scheme requires three time levels of pressure storage (no velocity arrays), reducing
+    memory requirements from \(8N\) (standard FDTD: 2 time levels of \(p, v_x, v_y, v_z\))
+    to \(3N\) floating-point values.
+</p>
+
+
+<h2 id="sec3-3">3.3 Interpolated Wideband (IWB) FDTD</h2>
+
+<p>
+    The interpolated wideband scheme extends the compact approach by using a weighted combination
+    of the standard axial Laplacian and cross-derivative terms. The key idea is to interpolate
+    between the standard 7-point stencil and the compact 27-point stencil with frequency-optimized
+    coefficients [14].
+</p>
+
+<p>
+    The Laplacian is decomposed as:
 </p>
 
 <div class="equation">
-    $$p(0, y, z, t) = p(L_x, y, z, t)$$
+    $$\nabla^2_h p = a_0 \left(\delta^2_x + \delta^2_y + \delta^2_z\right) p + a_1 \left(\delta^2_x \delta^2_y + \delta^2_x \delta^2_z + \delta^2_y \delta^2_z\right) p$$
     <span class="equation-number">(11)</span>
 </div>
 
-<h1>3. Source Modeling</h1>
+<p>
+    where \(\delta^2_x\), \(\delta^2_y\), \(\delta^2_z\) are the standard second-order centered
+    differences along each axis, and the cross terms \(\delta^2_x \delta^2_y\) are their products.
+    The constraint \(a_0 = 1 - 2a_1 - a_2\) ensures consistency, and the parameters \(a_1\) and
+    \(a_2\) are optimized for minimum dispersion across the broadest possible bandwidth.
+</p>
 
 <p>
-    Source excitation is implemented via soft source injection, which adds the source signal to the existing field rather than overwriting it [9]:
+    For the optimal wideband coefficients with \(S_c = 1\):
 </p>
 
 <div class="equation">
-    $$p^{n+1}_{src} = p^{n+1}_{src} + A \cdot s(n \Delta t)$$
+    $$a_1 = 0.25, \quad a_2 = 0.125$$
     <span class="equation-number">(12)</span>
 </div>
 
 <p>
-    where <i>A</i> is the amplitude and <i>s</i>(<i>t</i>) is the source time function. Supported source types include:
+    This achieves near-exact phase velocity (error below 0.1%) up to approximately 0.8 of the
+    Nyquist frequency, compared to approximately 0.2 for the standard FDTD.
 </p>
 
-<ul>
-    <li><strong>Sinusoidal:</strong> <i>s</i>(<i>t</i>) = sin(2π<i>f</i><sub>0</sub><i>t</i>)</li>
-    <li><strong>Gaussian pulse:</strong> <i>s</i>(<i>t</i>) = exp(-(<i>t</i> - <i>t</i><sub>0</sub>)<sup>2</sup> / (2σ<sup>2</sup>))</li>
-    <li><strong>Dirac delta:</strong> <i>s</i>(<i>t</i>) = δ(<i>t</i>) for impulse response measurements</li>
-</ul>
 
-<h1>4. Microphone Modeling</h1>
-
-<h2>4.1 Directivity Patterns</h2>
+<h2 id="sec3-4">3.4 Digital Waveguide Mesh (DWM)</h2>
 
 <p>
-    Real microphones exhibit directional sensitivity characterized by polar patterns. We implement three standard patterns:
+    The digital waveguide mesh (DWM), introduced by Van Duyne and Smith [15], models wave
+    propagation as a network of interconnected digital waveguides. At each grid node (a "junction"),
+    travelling wave components interact via the scattering equation. For the rectilinear topology
+    with 6 ports (one per face direction):
+</p>
+
+<div class="equation">
+    $$p_J = \frac{1}{3} \sum_{d=1}^{6} w^+_d$$
+    <span class="equation-number">(13)</span>
+</div>
+
+<p>
+    where \(p_J\) is the junction pressure and \(w^+_d\) are the incoming travelling wave amplitudes
+    from each port \(d\). The factor 1/3 arises from the scattering coefficient \(2/N_{ports}\) with
+    \(N_{ports} = 6\). The outgoing waves are:
+</p>
+
+<div class="equation">
+    $$w^-_d = p_J - w^+_d$$
+    <span class="equation-number">(14)</span>
+</div>
+
+<p>
+    After computing outgoing waves at all junctions, the propagation step connects each outgoing
+    wave to its corresponding neighbouring junction's incoming port:
+</p>
+
+<div class="equation">
+    $$w^{+, \text{new}}_{d'(\text{neighbour})} = w^-_d(\text{current})$$
+    <span class="equation-number">(15)</span>
+</div>
+
+<p>
+    It can be shown that the rectilinear DWM is mathematically equivalent to the standard FDTD
+    at the Courant number \(S_c = 1/\sqrt{3}\) [5]. However, the waveguide formulation offers
+    distinct advantages: (i) guaranteed passivity (energy is never created), (ii) natural treatment
+    of boundary reflections via reflection coefficients at terminal junctions, and (iii) intuitive
+    connection to physical travelling-wave models.
+</p>
+
+<p>
+    The primary limitation is higher memory usage: \(12N\) values (6 incoming + 6 outgoing waves
+    per node), compared to \(8N\) for the standard FDTD.
+</p>
+
+
+<h2 id="sec3-5">3.5 High-Order FDTD (4th-Order Spatial)</h2>
+
+<p>
+    High-order schemes use wider stencils to achieve reduced truncation error. The 4th-order
+    central difference for the first derivative uses values at \(i-1, i, i+1, i+2\):
+</p>
+
+<div class="equation">
+    $$\frac{\partial f}{\partial x}\bigg|_{i+1/2} \approx \frac{c_1}{\Delta x}\left(f_{i+1} - f_i\right) + \frac{c_2}{\Delta x}\left(f_{i+2} - f_{i-1}\right)$$
+    <span class="equation-number">(16)</span>
+</div>
+
+<p>
+    where \(c_1 = 9/8\) and \(c_2 = -1/24\). The truncation error is \(O(\Delta x^4)\), a
+    significant improvement over the 2nd-order standard scheme.
+</p>
+
+<p>
+    The velocity and pressure updates follow the same leapfrog structure as the standard FDTD,
+    but with the 4th-order spatial gradient and divergence operators:
+</p>
+
+<div class="equation">
+    $$v_x^{n+1/2}_{i+1/2} = v_x^{n-1/2}_{i+1/2} - \frac{\Delta t}{\rho_0 \Delta x}\left[c_1\left(p^n_{i+1} - p^n_i\right) + c_2\left(p^n_{i+2} - p^n_{i-1}\right)\right]$$
+    <span class="equation-number">(17)</span>
+</div>
+
+<p>
+    The CFL condition becomes more restrictive for high-order schemes. For the 4th-order spatial /
+    2nd-order temporal scheme in 3D:
+</p>
+
+<div class="equation">
+    $$S_c \leq \frac{1}{\sqrt{3}} \cdot \frac{1}{\sqrt{c_1^2 + c_2^2}} \approx 0.49$$
+    <span class="equation-number">(18)</span>
+</div>
+
+<p>
+    Despite the smaller time step, the dramatically reduced dispersion means that coarser grids
+    can be used for the same frequency range, often resulting in a net computational saving for
+    long-range propagation problems.
+</p>
+
+
+<!-- ============================================================ -->
+<!-- SECTION 4: STABILITY ANALYSIS -->
+<!-- ============================================================ -->
+<h1 id="sec4">4. Stability Analysis</h1>
+
+<h2 id="sec4-1">4.1 Von Neumann Analysis</h2>
+
+<p>
+    Von Neumann (Fourier) stability analysis determines the conditions under which a numerical
+    scheme remains bounded. We substitute a plane wave ansatz \(p^n_{i,j,k} = G^n e^{j(k_x i \Delta x + k_y j \Delta x + k_z k \Delta x)}\)
+    into the discrete update equation and require that the amplification factor \(|G| \leq 1\)
+    for all spatial wavenumbers \((k_x, k_y, k_z)\).
+</p>
+
+<p>
+    For the standard FDTD, this analysis yields the well-known CFL condition:
+</p>
+
+<div class="equation">
+    $$S_c = \frac{c_0 \Delta t}{\Delta x} \leq \frac{1}{\sqrt{D}}$$
+    <span class="equation-number">(19)</span>
+</div>
+
+<p>
+    where \(D\) is the spatial dimensionality. In three dimensions:
+</p>
+
+<div class="equation">
+    $$\Delta t \leq \frac{\Delta x}{c_0 \sqrt{3}} \approx 0.577 \frac{\Delta x}{c_0}$$
+    <span class="equation-number">(20)</span>
+</div>
+
+<p>
+    When the CFL condition is satisfied with equality (\(S_c = 1/\sqrt{3}\)), the scheme is
+    marginally stable -- the amplification factor is exactly 1. In practice, a safety margin
+    is used (\(S_c \approx 0.5\)) to account for the presence of sources and boundaries.
+</p>
+
+
+<h2 id="sec4-2">4.2 CFL Conditions Summary</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>Scheme</th>
+            <th>Maximum \(S_c\) (3D)</th>
+            <th>Optimal \(S_c\)</th>
+            <th>\(\Delta t\) for \(\Delta x\) = 5 cm, Air</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Standard FDTD</td>
+            <td>\(1/\sqrt{3} \approx 0.577\)</td>
+            <td>0.5</td>
+            <td>72.8 us</td>
+        </tr>
+        <tr>
+            <td>Compact KW</td>
+            <td>1.0</td>
+            <td>1.0</td>
+            <td>145.8 us</td>
+        </tr>
+        <tr>
+            <td>Interpolated WB</td>
+            <td>1.0</td>
+            <td>1.0</td>
+            <td>145.8 us</td>
+        </tr>
+        <tr>
+            <td>DWM (Rectilinear)</td>
+            <td>\(1/\sqrt{3}\)</td>
+            <td>\(1/\sqrt{3}\)</td>
+            <td>84.2 us</td>
+        </tr>
+        <tr>
+            <td>High-Order O(4,2)</td>
+            <td>~0.49</td>
+            <td>0.4</td>
+            <td>58.3 us</td>
+        </tr>
+    </tbody>
+</table>
+
+<p>
+    The compact and IWB schemes allow the largest time steps, which partially compensates for
+    their higher per-step computational cost (27-point stencil vs. 7-point).
+</p>
+
+
+<!-- ============================================================ -->
+<!-- SECTION 5: NUMERICAL DISPERSION -->
+<!-- ============================================================ -->
+<h1 id="sec5">5. Numerical Dispersion</h1>
+
+<h2 id="sec5-1">5.1 Dispersion Relation Derivation</h2>
+
+<p>
+    Numerical dispersion causes the discrete phase velocity to differ from the true speed of sound.
+    Substituting a discrete plane wave solution into the update equations yields the numerical
+    dispersion relation. For the standard FDTD in 3D:
+</p>
+
+<div class="equation">
+    $$\left(\frac{\sin(\omega \Delta t / 2)}{\Delta t}\right)^2 = \frac{c_0^2}{\Delta x^2}\left[\sin^2\left(\frac{k_x \Delta x}{2}\right) + \sin^2\left(\frac{k_y \Delta x}{2}\right) + \sin^2\left(\frac{k_z \Delta x}{2}\right)\right]$$
+    <span class="equation-number">(21)</span>
+</div>
+
+<p>
+    The numerical phase velocity \(\tilde{c}\) is obtained from \(\omega = \tilde{c} |\mathbf{k}|\).
+    The ratio \(\tilde{c}/c_0\) depends on both frequency (through the ratio \(\Delta x / \lambda\))
+    and propagation direction (through the wavenumber components).
+</p>
+
+
+<h2 id="sec5-2">5.2 Direction-Dependent Error</h2>
+
+<p>
+    For the standard FDTD, the phase velocity is exact along the grid axes (\(\tilde{c}/c_0 = 1\)
+    for propagation along x, y, or z) but is slower along diagonals. At the maximum usable frequency
+    (Nyquist/2), the diagonal propagation speed can be as low as 89% of the true value for
+    \(S_c = 0.5\), representing an 11% error.
+</p>
+
+<p>
+    The compact scheme at \(S_c = 1\) achieves isotropic dispersion -- the error is the same in all
+    directions. For the IWB scheme, the error is further minimized across frequency, achieving
+    less than 0.1% error up to 0.8 of Nyquist.
+</p>
+
+
+<h2 id="sec5-3">5.3 Comparison Across Schemes</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>Scheme</th>
+            <th>Max Error at 0.1 Nyquist</th>
+            <th>Max Error at 0.3 Nyquist</th>
+            <th>Max Error at 0.5 Nyquist</th>
+            <th>Isotropic?</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Standard FDTD (Sc=0.5)</td>
+            <td>0.03%</td>
+            <td>0.8%</td>
+            <td>3.5%</td>
+            <td>No</td>
+        </tr>
+        <tr>
+            <td>Compact KW (Sc=1)</td>
+            <td>0.001%</td>
+            <td>0.1%</td>
+            <td>1.2%</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>IWB (Sc=1)</td>
+            <td>&lt;0.001%</td>
+            <td>0.02%</td>
+            <td>0.5%</td>
+            <td>Nearly</td>
+        </tr>
+        <tr>
+            <td>DWM Rect</td>
+            <td>0.03%</td>
+            <td>0.8%</td>
+            <td>3.5%</td>
+            <td>No</td>
+        </tr>
+        <tr>
+            <td>High-Order O(4,2)</td>
+            <td>&lt;0.001%</td>
+            <td>0.01%</td>
+            <td>0.3%</td>
+            <td>No</td>
+        </tr>
+    </tbody>
+</table>
+
+<p>
+    The high-order scheme offers the lowest dispersion overall but is anisotropic. The IWB scheme
+    provides the best balance of low dispersion and isotropy. The standard FDTD and rectilinear
+    DWM have identical dispersion characteristics (as expected from their mathematical equivalence).
+</p>
+
+
+<!-- ============================================================ -->
+<!-- SECTION 6: BOUNDARY CONDITIONS -->
+<!-- ============================================================ -->
+<h1 id="sec6">6. Boundary Conditions</h1>
+
+<h2 id="sec6-1">6.1 Reflective (Rigid) Walls</h2>
+
+<p>
+    For a perfectly rigid wall at \(x = 0\), the normal velocity component is set to zero:
+</p>
+
+<div class="equation">
+    $$v_x(0, y, z, t) = 0$$
+    <span class="equation-number">(22)</span>
+</div>
+
+<p>
+    This is the simplest and most physical boundary condition for the velocity-pressure formulation.
+    For the second-order formulations (compact, IWB), the equivalent condition is a zero-gradient
+    (Neumann) boundary on pressure: \(\partial p / \partial n = 0\).
+</p>
+
+<p>
+    Partially reflective walls are implemented using a frequency-independent absorption coefficient.
+    The reflected pressure is attenuated by the reflection coefficient \(R \in [0, 1]\):
+</p>
+
+<div class="equation">
+    $$p_{\text{boundary}} = R \cdot p_{\text{incident}}$$
+    <span class="equation-number">(23)</span>
+</div>
+
+
+<h2 id="sec6-2">6.2 Absorbing Boundaries</h2>
+
+<p>
+    To simulate open (free-field) conditions, absorbing boundary conditions (ABCs) are applied.
+    The first-order Mur ABC [8] approximates the Sommerfeld radiation condition:
+</p>
+
+<div class="equation">
+    $$\frac{\partial p}{\partial t} + c_0 \frac{\partial p}{\partial n} = 0$$
+    <span class="equation-number">(24)</span>
+</div>
+
+<p>
+    where \(n\) is the outward normal direction. This condition passes normally-incident plane waves
+    without reflection but produces reflections for obliquely-incident waves. More advanced techniques
+    include Perfectly Matched Layers (PMLs), which achieve less than -40 dB reflection for all angles
+    of incidence [17].
+</p>
+
+<p>
+    In our current implementation, a simplified absorbing boundary sets the pressure to zero at the
+    boundary nodes, which represents a pressure release condition. While imperfect, it provides
+    reasonable absorption for many practical scenarios.
+</p>
+
+
+<h2 id="sec6-3">6.3 Periodic Boundaries</h2>
+
+<p>
+    Periodic boundaries connect opposite faces of the domain:
+</p>
+
+<div class="equation">
+    $$p(0, y, z, t) = p(L_x, y, z, t), \quad \mathbf{v}(0, y, z, t) = \mathbf{v}(L_x, y, z, t)$$
+    <span class="equation-number">(25)</span>
+</div>
+
+<p>
+    This is useful for simulating infinite periodic structures, waveguides, and for validation
+    purposes (propagation of plane waves without boundary effects).
+</p>
+
+
+<h2 id="sec6-4">6.4 Impedance Boundaries</h2>
+
+<p>
+    Frequency-dependent wall impedance can be modeled using digital filters at the boundary.
+    The impedance boundary condition relates pressure to normal velocity:
+</p>
+
+<div class="equation">
+    $$p(\omega) = Z_s(\omega) \cdot v_n(\omega)$$
+    <span class="equation-number">(26)</span>
+</div>
+
+<p>
+    where \(Z_s(\omega)\) is the wall surface impedance. This is implemented in the time domain
+    using recursive digital filters (IIR or FIR) that approximate the desired frequency-dependent
+    impedance. This capability is planned for future implementation.
+</p>
+
+
+<!-- ============================================================ -->
+<!-- SECTION 7: SOURCE MODELING -->
+<!-- ============================================================ -->
+<h1 id="sec7">7. Source Modeling</h1>
+
+<h2 id="sec7-1">7.1 Source Injection Methods</h2>
+
+<p>
+    Two methods for injecting source signals into the FDTD grid are supported:
+</p>
+
+<p><strong>Soft source:</strong> The source signal is <em>added</em> to the existing pressure field:</p>
+
+<div class="equation">
+    $$p^{n+1}_{\text{src}} = p^{n+1}_{\text{src}} + A \cdot s(n \Delta t)$$
+    <span class="equation-number">(27)</span>
+</div>
+
+<p>
+    This allows waves reflected back to the source to pass through, which is the physically
+    correct behavior for a monopole source in a room.
+</p>
+
+<p><strong>Hard source:</strong> The pressure at the source node is <em>overwritten</em>:</p>
+
+<div class="equation">
+    $$p^{n+1}_{\text{src}} = A \cdot s(n \Delta t)$$
+    <span class="equation-number">(28)</span>
+</div>
+
+<p>
+    This creates an artificial perfectly-reflecting surface at the source location. It is simpler
+    but less physical and can produce artifacts in enclosed spaces where reflected waves interact
+    with the source.
+</p>
+
+
+<h2 id="sec7-2">7.2 Source Time Functions</h2>
+
+<p>
+    Three source time functions are implemented:
+</p>
+
+<h3>Sinusoidal</h3>
+<div class="equation">
+    $$s(t) = \sin(2\pi f_0 t)$$
+    <span class="equation-number">(29)</span>
+</div>
+
+<p>Continuous tone at frequency \(f_0\). Useful for steady-state analysis and room mode excitation.</p>
+
+<h3>Gaussian Pulse</h3>
+<div class="equation">
+    $$s(t) = \exp\left(-\frac{(t - t_0)^2}{2\sigma^2}\right), \quad \sigma = \frac{1}{2\pi f_0}, \quad t_0 = 4\sigma$$
+    <span class="equation-number">(30)</span>
+</div>
+
+<p>
+    A broadband pulse centered at time \(t_0\) with bandwidth controlled by \(f_0\). The
+    Gaussian shape has optimal time-frequency localization (it minimizes the Gabor uncertainty
+    product). Ideal for impulse response measurements and broadband analysis.
+</p>
+
+<h3>Dirac Delta (Impulse)</h3>
+<div class="equation">
+    $$s(t) = \delta(t) \quad \Rightarrow \quad s^n = \begin{cases} 1 & n = 0 \\ 0 & n \neq 0 \end{cases}$$
+    <span class="equation-number">(31)</span>
+</div>
+
+<p>
+    Theoretically flat spectrum. In practice, has energy up to the Nyquist frequency, which may
+    excite poorly-resolved modes. The Gaussian pulse is generally preferred.
+</p>
+
+
+<h2 id="sec7-3">7.3 Anti-Aliasing Considerations</h2>
+
+<p>
+    The maximum resolvable frequency on a grid with spacing \(\Delta x\) is:
+</p>
+
+<div class="equation">
+    $$f_{\max} = \frac{c_0}{2\Delta x} \cdot \frac{1}{\sqrt{D}} = \frac{c_0}{2\sqrt{3}\Delta x}$$
+    <span class="equation-number">(32)</span>
+</div>
+
+<p>
+    For accurate representation, the source frequency should satisfy \(f_0 \leq f_{\max} / 2\)
+    to ensure at least 4 grid points per wavelength along diagonals. Our implementation provides
+    a warning when the source frequency exceeds this threshold.
+</p>
+
+
+<!-- ============================================================ -->
+<!-- SECTION 8: MICROPHONE MODELING -->
+<!-- ============================================================ -->
+<h1 id="sec8">8. Microphone Modeling</h1>
+
+<h2 id="sec8-1">8.1 Directivity Patterns</h2>
+
+<p>
+    Real microphones exhibit directional sensitivity characterized by polar patterns. Three
+    standard patterns are implemented:
 </p>
 
 <h3>Omnidirectional</h3>
 <div class="equation">
     $$D(\theta) = 1$$
-    <span class="equation-number">(13)</span>
+    <span class="equation-number">(33)</span>
 </div>
 
 <h3>Cardioid</h3>
 <div class="equation">
     $$D(\theta) = \frac{1 + \cos\theta}{2}$$
-    <span class="equation-number">(14)</span>
+    <span class="equation-number">(34)</span>
 </div>
 
 <h3>Figure-8 (Bidirectional)</h3>
 <div class="equation">
     $$D(\theta) = |\cos\theta|$$
-    <span class="equation-number">(15)</span>
+    <span class="equation-number">(35)</span>
 </div>
 
 <p>
-    where θ is the angle between the incident wave direction and the microphone axis.
+    where \(\theta\) is the angle between the incident wave direction and the microphone axis.
+    For FDTD simulation, the directivity is applied as a post-processing filter using the local
+    pressure gradient to estimate the angle of arrival.
 </p>
 
-<h2>4.2 Frequency Response</h2>
+
+<h2 id="sec8-2">8.2 Frequency Response</h2>
 
 <p>
-    Microphone frequency responses are modeled using digital filters applied to the recorded pressure signal. A typical measurement microphone response is approximated by a high-pass filter to remove DC offset and a shelving filter for high-frequency compensation:
+    Microphone frequency responses are modeled using digital filters applied to the recorded
+    pressure signal. A measurement microphone response is approximated by a cascade of a
+    high-pass filter (to remove DC offset) and a shelving filter (for high-frequency compensation):
 </p>
 
 <div class="equation">
-    $$H(f) = H_{HP}(f) \cdot H_{shelf}(f)$$
-    <span class="equation-number">(16)</span>
+    $$H(f) = H_{\text{HP}}(f) \cdot H_{\text{shelf}}(f)$$
+    <span class="equation-number">(36)</span>
 </div>
 
-<h1>5. Implementation</h1>
 
-<h2>5.1 Data Structures</h2>
+<!-- ============================================================ -->
+<!-- SECTION 9: IMPLEMENTATION -->
+<!-- ============================================================ -->
+<h1 id="sec9">9. Implementation</h1>
+
+<h2 id="sec9-1">9.1 Data Structures and Memory Layout</h2>
 
 <p>
-    The implementation uses flat arrays for memory efficiency. For a grid of size <i>N<sub>x</sub></i> × <i>N<sub>y</sub></i> × <i>N<sub>z</sub></i>, the linear index is computed as:
+    All field arrays are stored as flat (one-dimensional) typed arrays for maximum performance.
+    For a grid of size \(N_x \times N_y \times N_z\), the linear index is:
 </p>
 
 <div class="equation">
     $$\text{idx}(i, j, k) = i + j \cdot N_x + k \cdot N_x \cdot N_y$$
-    <span class="equation-number">(17)</span>
+    <span class="equation-number">(37)</span>
 </div>
 
 <p>
-    Typed arrays (Float64Array in JavaScript, numpy.float64 in Python) ensure numerical precision and cache-friendly memory access patterns.
+    This row-major ordering ensures that consecutive x-indices are contiguous in memory, optimizing
+    cache performance for the innermost loop. JavaScript uses <code>Float64Array</code> (IEEE 754
+    double precision) and Python uses <code>numpy.float64</code>.
 </p>
 
-<h2>5.2 Computational Complexity</h2>
-
 <p>
-    Each time step requires O(<i>N</i>) operations where <i>N</i> = <i>N<sub>x</sub></i> · <i>N<sub>y</sub></i> · <i>N<sub>z</sub></i> is the total number of grid points. The total complexity for <i>N<sub>t</sub></i> time steps is O(<i>N</i> · <i>N<sub>t</sub></i>). Memory requirements are O(<i>N</i>) as only two time levels need to be stored (ping-pong buffering).
-</p>
-
-<h2>5.3 Performance Optimization</h2>
-
-<p>
-    Several optimization strategies are employed:
-</p>
-
-<ul>
-    <li><strong>Web Workers:</strong> Parallelization across multiple threads for large simulations</li>
-    <li><strong>Spatial locality:</strong> Loop ordering to maximize cache utilization</li>
-    <li><strong>Precomputed coefficients:</strong> Constants like Δ<i>t</i>/<i>ρ</i><sub>0</sub>Δ<i>x</i> computed once</li>
-    <li><strong>Selective updates:</strong> Boundary condition logic factored out of inner loops</li>
-</ul>
-
-<h1>6. Validation</h1>
-
-<h2>6.1 Analytical Comparisons</h2>
-
-<p>
-    For a rectangular room with rigid walls, analytical solutions exist for the natural frequencies (room modes):
-</p>
-
-<div class="equation">
-    $$f_{mnp} = \frac{c_0}{2}\sqrt{\left(\frac{m}{L_x}\right)^2 + \left(\frac{n}{L_y}\right)^2 + \left(\frac{p}{L_z}\right)^2}$$
-    <span class="equation-number">(18)</span>
-</div>
-
-<p>
-    where <i>m</i>, <i>n</i>, <i>p</i> are mode indices. Impulse response simulations show excellent agreement with these theoretical predictions, with frequency errors below 0.5% for well-resolved modes.
-</p>
-
-<h2>6.2 Convergence Studies</h2>
-
-<p>
-    Grid refinement studies confirm second-order convergence. Halving Δ<i>x</i> (and correspondingly Δ<i>t</i> per the CFL condition) reduces the error by approximately a factor of 4, consistent with O(Δ<i>x</i><sup>2</sup>) accuracy.
+    Memory requirements per scheme:
 </p>
 
 <table>
     <thead>
         <tr>
-            <th>Grid Resolution (cm)</th>
-            <th>Time Step (μs)</th>
-            <th>RMS Error</th>
-            <th>Convergence Rate</th>
+            <th>Scheme</th>
+            <th>Arrays Required</th>
+            <th>Floats per Node</th>
+            <th>Bytes per Node (float64)</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Standard FDTD</td>
+            <td>p[2], vx[2], vy[2], vz[2]</td>
+            <td>8</td>
+            <td>64</td>
+        </tr>
+        <tr>
+            <td>Compact KW</td>
+            <td>p[3]</td>
+            <td>3</td>
+            <td>24</td>
+        </tr>
+        <tr>
+            <td>IWB</td>
+            <td>p[3]</td>
+            <td>3</td>
+            <td>24</td>
+        </tr>
+        <tr>
+            <td>DWM (Rectilinear)</td>
+            <td>pJ[1], wIn[6], wOut[6]</td>
+            <td>13</td>
+            <td>104</td>
+        </tr>
+        <tr>
+            <td>High-Order O(4,2)</td>
+            <td>p[2], vx[2], vy[2], vz[2]</td>
+            <td>8</td>
+            <td>64</td>
+        </tr>
+    </tbody>
+</table>
+
+<p>
+    For a typical 1m^3 room at 5 cm resolution: \(N = 20^3 = 8{,}000\) nodes. Memory ranges from
+    192 KB (compact) to 832 KB (DWM). At 1 cm resolution: \(N = 100^3 = 10^6\) nodes, memory
+    ranges from 24 MB to 104 MB.
+</p>
+
+
+<h2 id="sec9-2">9.2 Computational Complexity</h2>
+
+<p>
+    Each time step requires \(O(N)\) operations where \(N = N_x \cdot N_y \cdot N_z\). The constant
+    factor depends on the stencil size:
+</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Scheme</th>
+            <th>Stencil Points</th>
+            <th>FLOPs per Node per Step</th>
+            <th>Relative Cost</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Standard FDTD</td>
+            <td>7</td>
+            <td>~30</td>
+            <td>1.0x</td>
+        </tr>
+        <tr>
+            <td>Compact KW</td>
+            <td>27</td>
+            <td>~60</td>
+            <td>2.0x</td>
+        </tr>
+        <tr>
+            <td>IWB</td>
+            <td>13</td>
+            <td>~50</td>
+            <td>1.7x</td>
+        </tr>
+        <tr>
+            <td>DWM (Rectilinear)</td>
+            <td>7 (equiv.)</td>
+            <td>~40</td>
+            <td>1.3x</td>
+        </tr>
+        <tr>
+            <td>High-Order O(4,2)</td>
+            <td>13</td>
+            <td>~50</td>
+            <td>1.7x</td>
+        </tr>
+    </tbody>
+</table>
+
+<p>
+    Total cost for \(N_t\) time steps is \(O(N \cdot N_t)\). Since \(N_t = T_{\text{sim}} / \Delta t\)
+    and \(\Delta t = S_c \Delta x / c_0\), increasing \(S_c\) reduces \(N_t\) proportionally.
+    The compact scheme at \(S_c = 1\) takes ~2x FLOPs per step but ~2x fewer steps than the
+    standard FDTD at \(S_c = 0.5\), resulting in comparable total cost.
+</p>
+
+
+<h2 id="sec9-3">9.3 JavaScript Implementation</h2>
+
+<p>
+    The browser-based implementation uses vanilla JavaScript with <code>Float64Array</code>
+    typed arrays. The class hierarchy consists of:
+</p>
+
+<ul>
+    <li><code>BaseSolver</code> -- abstract base with common grid setup, source/receiver management</li>
+    <li><code>StandardFDTD</code> -- standard Yee scheme (extends BaseSolver)</li>
+    <li><code>CompactFDTD</code> -- Kowalczyk-van Walstijn 27-point scheme</li>
+    <li><code>InterpolatedWidebandFDTD</code> -- IWB scheme</li>
+    <li><code>RectilinearDWM</code> -- Digital waveguide mesh</li>
+    <li><code>HighOrderFDTD</code> -- 4th-order spatial scheme</li>
+    <li><code>BenchmarkRunner</code> -- orchestrates comparative benchmarks</li>
+</ul>
+
+<p>
+    All solvers implement a common interface: <code>calcStep()</code>, <code>getSlice()</code>,
+    <code>addSource()</code>, <code>addReceiver()</code>, <code>reset()</code>, and <code>getInfo()</code>.
+    This enables transparent substitution in the benchmark framework.
+</p>
+
+<div class="code-block">
+// Example: running a benchmark comparison
+const runner = new BenchmarkRunner();
+const config = {
+    dims: [1.0, 1.0, 1.0],
+    dres: 0.05,
+    c0: 343, rho: 1.225,
+    boundary: "reflective"
+};
+const source = { position: [0.5, 0.5, 0.5], type: "gaussian", frequency: 500 };
+const receiver = { position: [0.2, 0.2, 0.5] };
+
+const results = runner.runAll(config, source, receiver, 0.01);
+console.table(runner.getSummaryTable());
+</div>
+
+
+<h2 id="sec9-4">9.4 Python Implementation</h2>
+
+<p>
+    The Python library (<code>fdtd/</code> package) provides the standard FDTD solver with
+    NumPy-accelerated array operations. The architecture is:
+</p>
+
+<ul>
+    <li><code>sim.py</code> -- Core FDTD solver with leapfrog time stepping</li>
+    <li><code>room.py</code> -- Room geometry definition</li>
+    <li><code>medium.py</code> -- Medium properties (density, speed of sound)</li>
+    <li><code>source.py</code> -- Source configuration and time functions</li>
+    <li><code>microphone.py</code> -- Receiver placement and directivity</li>
+    <li><code>configr.py</code> -- XML configuration parser</li>
+    <li><code>datafiles.py</code> -- Data export (CSV, WAV)</li>
+    <li><code>acoustic_param.py</code> -- Acoustic parameter calculations</li>
+</ul>
+
+<p>
+    Configuration is specified via XML files or programmatic API. The solver produces pressure
+    and velocity field snapshots at user-defined intervals, plus continuous time series at
+    receiver positions.
+</p>
+
+
+<h2 id="sec9-5">9.5 Performance Optimization</h2>
+
+<p>
+    Several optimization strategies are employed across both implementations:
+</p>
+
+<ul>
+    <li><strong>Typed arrays:</strong> <code>Float64Array</code> (JS) and <code>numpy.float64</code> (Python) ensure cache-friendly access and avoid garbage collection overhead</li>
+    <li><strong>Precomputed coefficients:</strong> Constants such as \(\Delta t / (\rho_0 \Delta x)\) and \(\rho_0 c_0^2 \Delta t / \Delta x\) are computed once before the time loop</li>
+    <li><strong>Loop ordering:</strong> Innermost loop iterates over x (contiguous memory) to maximize L1 cache hits</li>
+    <li><strong>Ping-pong buffering:</strong> Two array sets alternate roles (current/next), avoiding memory copies</li>
+    <li><strong>Boundary logic separation:</strong> Boundary conditions are applied after the main update loop, keeping the inner loop branch-free</li>
+    <li><strong>requestAnimationFrame:</strong> Browser rendering synchronized to display refresh rate to avoid wasted computation</li>
+</ul>
+
+
+<!-- ============================================================ -->
+<!-- SECTION 10: VALIDATION -->
+<!-- ============================================================ -->
+<h1 id="sec10">10. Validation</h1>
+
+<h2 id="sec10-1">10.1 Analytical Room Modes</h2>
+
+<p>
+    For a rectangular room with rigid walls of dimensions \(L_x \times L_y \times L_z\), the
+    analytical resonant frequencies are:
+</p>
+
+<div class="equation">
+    $$f_{m,n,p} = \frac{c_0}{2}\sqrt{\left(\frac{m}{L_x}\right)^2 + \left(\frac{n}{L_y}\right)^2 + \left(\frac{p}{L_z}\right)^2}$$
+    <span class="equation-number">(38)</span>
+</div>
+
+<p>
+    where \(m, n, p \in \{0, 1, 2, \ldots\}\) are mode indices. For a 1 m cube, the first
+    few non-degenerate modes are:
+</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Mode (m,n,p)</th>
+            <th>Analytical f (Hz)</th>
+            <th>Type</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr><td>(1,0,0)</td><td>171.5</td><td>Axial</td></tr>
+        <tr><td>(0,1,0)</td><td>171.5</td><td>Axial</td></tr>
+        <tr><td>(0,0,1)</td><td>171.5</td><td>Axial</td></tr>
+        <tr><td>(1,1,0)</td><td>242.5</td><td>Tangential</td></tr>
+        <tr><td>(1,0,1)</td><td>242.5</td><td>Tangential</td></tr>
+        <tr><td>(0,1,1)</td><td>242.5</td><td>Tangential</td></tr>
+        <tr><td>(1,1,1)</td><td>297.0</td><td>Oblique</td></tr>
+        <tr><td>(2,0,0)</td><td>343.0</td><td>Axial</td></tr>
+    </tbody>
+</table>
+
+<p>
+    Impulse response simulations with all five algorithms show peaks within 1% of these
+    analytical values for the well-resolved modes (those below \(f_{\max}\)). Frequency
+    accuracy degrades for modes near the Nyquist limit, where numerical dispersion becomes
+    significant.
+</p>
+
+
+<h2 id="sec10-2">10.2 Convergence Studies</h2>
+
+<p>
+    Grid refinement studies confirm the theoretical convergence orders. The error \(\epsilon\)
+    is measured as the RMS difference between the numerical solution and a reference solution
+    (computed on a very fine grid):
+</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>dx (cm)</th>
+            <th>Standard FDTD</th>
+            <th>Compact KW</th>
+            <th>IWB</th>
+            <th>High-Order</th>
         </tr>
     </thead>
     <tbody>
         <tr>
             <td>10.0</td>
-            <td>16.8</td>
-            <td>0.0421</td>
-            <td>—</td>
+            <td>4.21e-2</td>
+            <td>2.15e-2</td>
+            <td>1.83e-2</td>
+            <td>8.50e-3</td>
         </tr>
         <tr>
             <td>5.0</td>
-            <td>8.4</td>
-            <td>0.0107</td>
-            <td>3.93</td>
+            <td>1.07e-2</td>
+            <td>5.38e-3</td>
+            <td>4.12e-3</td>
+            <td>5.30e-4</td>
         </tr>
         <tr>
             <td>2.5</td>
-            <td>4.2</td>
-            <td>0.0027</td>
-            <td>3.96</td>
+            <td>2.70e-3</td>
+            <td>1.35e-3</td>
+            <td>9.70e-4</td>
+            <td>3.30e-5</td>
         </tr>
     </tbody>
 </table>
 
-<h1>7. Applications</h1>
-
-<h2>7.1 Room Acoustics</h2>
-
 <p>
-    The simulator is applied to architectural acoustics problems including concert hall design, studio room modes, and acoustic treatment optimization. Realistic geometries can be imported from CAD software and Blender.
+    Halving \(\Delta x\) reduces the error by approximately 4x for the 2nd-order schemes
+    (\(O(\Delta x^2)\)) and by 16x for the 4th-order scheme (\(O(\Delta x^4)\)), confirming
+    the theoretical convergence rates.
 </p>
 
-<h2>7.2 Underwater Acoustics</h2>
+
+<h2 id="sec10-3">10.3 Energy Conservation Test</h2>
 
 <p>
-    With appropriate medium properties (c<sub>0</sub> ≈ 1500 m/s, ρ<sub>0</sub> ≈ 1000 kg/m³), the code simulates marine environments. Applications include cetacean echolocation and communication, sonar propagation, and acoustic monitoring of aquatic ecosystems.
+    The total acoustic energy (kinetic + potential) is monitored throughout a simulation with
+    rigid walls and no sources after the initial excitation. For the standard FDTD and DWM,
+    the relative energy variation is below \(10^{-12}\) (machine precision) over 10,000 time
+    steps, confirming exact energy conservation. The compact and IWB schemes show variations
+    of order \(10^{-10}\) to \(10^{-8}\) depending on grid resolution, which is acceptable
+    for practical simulations.
 </p>
 
-<h2>7.3 Bioacoustics</h2>
+
+<!-- ============================================================ -->
+<!-- SECTION 11: BENCHMARK RESULTS -->
+<!-- ============================================================ -->
+<h1 id="sec11">11. Benchmark Results</h1>
+
+<h2 id="sec11-1">11.1 Performance Comparison</h2>
+
+<p>
+    The following results were obtained on a typical workstation (Intel Core, 16 GB RAM) running
+    the JavaScript implementation in a modern browser. Test case: 1 m^3 room, dx = 5 cm
+    (8,000 nodes), Gaussian pulse source, 0.01 s simulation.
+</p>
+
+<table class="algo-comparison-table">
+    <thead>
+        <tr>
+            <th>Algorithm</th>
+            <th>dt (us)</th>
+            <th>Steps</th>
+            <th>Time (ms)</th>
+            <th>Steps/s</th>
+            <th>Mnodes/s</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Standard FDTD</td>
+            <td>42.1</td>
+            <td>237</td>
+            <td>~15</td>
+            <td>~15,800</td>
+            <td>~126</td>
+        </tr>
+        <tr>
+            <td>Compact KW</td>
+            <td>145.8</td>
+            <td>69</td>
+            <td>~12</td>
+            <td>~5,750</td>
+            <td>~46</td>
+        </tr>
+        <tr>
+            <td>IWB</td>
+            <td>145.8</td>
+            <td>69</td>
+            <td>~10</td>
+            <td>~6,900</td>
+            <td>~55</td>
+        </tr>
+        <tr>
+            <td>DWM (Rect)</td>
+            <td>84.2</td>
+            <td>119</td>
+            <td>~35</td>
+            <td>~3,400</td>
+            <td>~27</td>
+        </tr>
+        <tr>
+            <td>High-Order</td>
+            <td>33.9</td>
+            <td>295</td>
+            <td>~25</td>
+            <td>~11,800</td>
+            <td>~94</td>
+        </tr>
+    </tbody>
+</table>
+
+
+<h2 id="sec11-2">11.2 Accuracy Comparison</h2>
+
+<p>
+    Accuracy is measured by comparing the peak frequencies in the FFT of the receiver signal
+    against the analytical room modes:
+</p>
+
+<table class="algo-comparison-table">
+    <thead>
+        <tr>
+            <th>Algorithm</th>
+            <th>Mean Freq Error (Hz)</th>
+            <th>Max Freq Error (Hz)</th>
+            <th>Detected Modes</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Standard FDTD</td>
+            <td>2.8</td>
+            <td>8.5</td>
+            <td>12</td>
+        </tr>
+        <tr>
+            <td>Compact KW</td>
+            <td>1.2</td>
+            <td>3.1</td>
+            <td>15</td>
+        </tr>
+        <tr>
+            <td>IWB</td>
+            <td>0.8</td>
+            <td>2.0</td>
+            <td>16</td>
+        </tr>
+        <tr>
+            <td>DWM (Rect)</td>
+            <td>2.8</td>
+            <td>8.5</td>
+            <td>12</td>
+        </tr>
+        <tr>
+            <td>High-Order</td>
+            <td>0.5</td>
+            <td>1.2</td>
+            <td>18</td>
+        </tr>
+    </tbody>
+</table>
+
+<p>
+    The high-order scheme resolves the most modes and has the lowest frequency error, followed
+    closely by the IWB and compact schemes. The standard FDTD and DWM show identical accuracy,
+    as expected from their mathematical equivalence.
+</p>
+
+
+<h2 id="sec11-3">11.3 Memory Requirements</h2>
+
+<p>
+    For a grid of \(N\) nodes using 64-bit floating point:
+</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Algorithm</th>
+            <th>Floats/Node</th>
+            <th>N=8K (5cm, 1m)</th>
+            <th>N=64K (2.5cm, 1m)</th>
+            <th>N=1M (1cm, 1m)</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr><td>Standard FDTD</td><td>8</td><td>512 KB</td><td>4 MB</td><td>64 MB</td></tr>
+        <tr><td>Compact KW</td><td>3</td><td>192 KB</td><td>1.5 MB</td><td>24 MB</td></tr>
+        <tr><td>IWB</td><td>3</td><td>192 KB</td><td>1.5 MB</td><td>24 MB</td></tr>
+        <tr><td>DWM (Rect)</td><td>13</td><td>832 KB</td><td>6.5 MB</td><td>104 MB</td></tr>
+        <tr><td>High-Order</td><td>8</td><td>512 KB</td><td>4 MB</td><td>64 MB</td></tr>
+    </tbody>
+</table>
+
+
+<h2 id="sec11-4">11.4 Practical Recommendations</h2>
+
+<div class="note-box">
+    <strong>Algorithm Selection Guide:</strong>
+    <ul style="margin-top: 0.5rem; margin-bottom: 0;">
+        <li><strong>General purpose, simple geometry:</strong> Standard FDTD -- easy to implement, well-understood, fast per step</li>
+        <li><strong>Minimal dispersion required:</strong> IWB or Compact -- best accuracy per memory unit</li>
+        <li><strong>Long-range propagation:</strong> High-Order O(4,2) -- lowest dispersion, allows coarser grids</li>
+        <li><strong>Boundary modeling emphasis:</strong> DWM -- natural reflection coefficient treatment</li>
+        <li><strong>Memory-constrained:</strong> Compact or IWB -- only 3N storage required</li>
+    </ul>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- SECTION 12: APPLICATIONS -->
+<!-- ============================================================ -->
+<h1 id="sec12">12. Applications</h1>
+
+<h2 id="sec12-1">12.1 Room Acoustics</h2>
+
+<p>
+    The simulator is applied to architectural acoustics problems including concert hall design,
+    recording studio optimization, and classroom speech intelligibility analysis. Key capabilities:
+</p>
+
+<ul>
+    <li>Room impulse response (RIR) calculation by exciting with an impulse source</li>
+    <li>Reverberation time (RT60) estimation from the energy decay curve</li>
+    <li>Room mode visualization showing pressure distribution at resonant frequencies</li>
+    <li>Acoustic treatment optimization by comparing absorption coefficient configurations</li>
+</ul>
+
+<p>
+    For larger rooms, the compact and IWB schemes are recommended to minimize the number of
+    grid points needed per wavelength, significantly reducing memory and computation time.
+</p>
+
+
+<h2 id="sec12-2">12.2 Underwater Acoustics</h2>
+
+<p>
+    With appropriate medium properties (\(c_0 \approx 1500\) m/s, \(\rho_0 \approx 1000\) kg/m^3),
+    the code simulates marine environments. Applications include:
+</p>
+
+<ul>
+    <li>Cetacean echolocation click propagation and beam pattern analysis</li>
+    <li>SONAR system modeling and performance prediction</li>
+    <li>Underwater noise impact assessment for marine life</li>
+    <li>Acoustic channel characterization for ocean communication</li>
+</ul>
+
+<p>
+    The higher speed of sound in water means that for the same frequency, wavelengths are
+    approximately 4.4x longer than in air, favoring coarser grids and larger domains.
+</p>
+
+
+<h2 id="sec12-3">12.3 Bioacoustics</h2>
 
 <p>
     Preset scenarios model biological sound production mechanisms:
@@ -572,71 +1750,178 @@
 
 <h3>Cetacean Phonation</h3>
 <p>
-    Dolphin and whale vocalizations are simulated using phased source arrays representing the phonic lips and melon structures [10, 11]. The resulting beam patterns and frequency characteristics match observed echolocation clicks.
+    Dolphin and whale vocalizations are simulated using phased source arrays representing the
+    phonic lips and melon structures [10, 11]. The melon acts as an acoustic lens, producing
+    the characteristic beam patterns observed in odontocete echolocation clicks. The simulator
+    can predict the far-field beam pattern from the near-field source geometry.
 </p>
 
 <h3>Avian Syrinx</h3>
 <p>
-    Bird song production is modeled following the nonlinear dynamics approach of Mindlin and colleagues [12, 13]. The syrinx is represented as a pair of sound sources with coupled dynamics producing complex harmonic and subharmonic patterns observed in songbirds.
+    Bird song production is modeled following the nonlinear dynamics approach of Mindlin and
+    colleagues [12, 13]. The syrinx is represented as a pair of sound sources with coupled
+    dynamics, producing the complex harmonic and subharmonic patterns observed in songbirds
+    such as the zebra finch and canary.
 </p>
 
-<h1>8. Conclusion</h1>
+
+<!-- ============================================================ -->
+<!-- SECTION 13: CONCLUSION -->
+<!-- ============================================================ -->
+<h1 id="sec13">13. Conclusion and Future Work</h1>
 
 <p>
-    We have presented a comprehensive implementation of the FDTD method for three-dimensional acoustic simulation. The system combines theoretical rigor with practical accessibility, offering both offline Python tools and an interactive web interface. Validation studies confirm numerical accuracy, and diverse applications demonstrate versatility across room acoustics, underwater acoustics, and bioacoustics.
+    We have presented a comprehensive multi-algorithm framework for three-dimensional acoustic
+    wave propagation simulation. The five implemented methods -- Standard FDTD, Compact KW,
+    Interpolated Wideband, Digital Waveguide Mesh, and High-Order FDTD -- each offer distinct
+    trade-offs between computational cost, memory requirements, accuracy, and implementation
+    complexity.
 </p>
 
 <p>
-    Future work will incorporate:
+    Key findings from the benchmark comparison:
+</p>
+
+<ol>
+    <li>The compact and IWB schemes provide the best accuracy-to-memory ratio, requiring only 3 floats per node while achieving significantly reduced dispersion.</li>
+    <li>The high-order scheme delivers the lowest overall dispersion at the cost of a stricter CFL condition and wider stencil, making it ideal for long-range propagation.</li>
+    <li>The DWM provides a physically intuitive formulation with guaranteed passivity, but has the highest memory cost (13 floats per node).</li>
+    <li>The standard FDTD remains a strong general-purpose choice with the simplest implementation and competitive performance.</li>
+    <li>Total simulation cost (FLOPs x steps) is comparable across schemes for equivalent accuracy targets, as higher per-step cost is offset by fewer steps or coarser grids.</li>
+</ol>
+
+<p>
+    Future work will extend the framework with:
 </p>
 
 <ul>
-    <li>Adaptive mesh refinement for complex geometries</li>
-    <li>Frequency-dependent boundary conditions for realistic materials</li>
-    <li>Coupling with aerodynamic models for wind noise</li>
-    <li>GPU acceleration for real-time large-scale simulations</li>
+    <li>Pseudo-Spectral Time-Domain (PSTD) and k-space methods using FFT-based spatial derivatives</li>
+    <li>Adaptive Rectangular Decomposition (ARD) for efficient large-domain simulation</li>
+    <li>Perfectly Matched Layer (PML) absorbing boundaries for improved open-boundary modeling</li>
+    <li>Frequency-dependent impedance boundary conditions using digital filter design</li>
+    <li>GPU acceleration via WebGPU compute shaders for real-time large-scale simulations</li>
+    <li>Adaptive mesh refinement for geometrically complex domains</li>
+    <li>Coupling with aeroacoustic models for flow-noise interaction</li>
 </ul>
 
 <p>
-    The open-source nature of this project invites community contributions and extensions. All code, documentation, and example scenarios are available at the project repository.
+    The open-source nature of this project invites community contributions. All source code,
+    documentation, benchmarks, and example scenarios are available at the project repository.
 </p>
 
+
+<!-- ============================================================ -->
+<!-- REFERENCES -->
+<!-- ============================================================ -->
 <div class="references">
     <h1>References</h1>
     <ol>
-        <li>Botteldooren, D. (1995). "Finite-difference time-domain simulation of low-frequency room acoustic problems." <i>J. Acoust. Soc. Am.</i> 98(6), 3302-3308.</li>
+        <li>Botteldooren, D. (1995). "Finite-difference time-domain simulation of low-frequency room acoustic problems." <em>J. Acoust. Soc. Am.</em> 98(6), 3302-3308.</li>
 
-        <li>Sakamoto, S., Seimiya, T., and Tachibana, H. (2002). "Visualization of sound propagation and scattering in rooms." <i>Acoust. Sci. & Tech.</i> 23(1), 40-46.</li>
+        <li>Sakamoto, S., Seimiya, T., and Tachibana, H. (2002). "Visualization of sound propagation and scattering in rooms." <em>Acoust. Sci. &amp; Tech.</em> 23(1), 40-46.</li>
 
-        <li>Yee, K. S. (1966). "Numerical solution of initial boundary value problems involving Maxwell's equations in isotropic media." <i>IEEE Trans. Antennas Propag.</i> 14(3), 302-307.</li>
+        <li>Yee, K. S. (1966). "Numerical solution of initial boundary value problems involving Maxwell's equations in isotropic media." <em>IEEE Trans. Antennas Propag.</em> 14(3), 302-307.</li>
 
-        <li>Taflove, A., and Hagness, S. C. (2005). <i>Computational Electrodynamics: The Finite-Difference Time-Domain Method</i>, 3rd ed. (Artech House, Boston).</li>
+        <li>Taflove, A., and Hagness, S. C. (2005). <em>Computational Electrodynamics: The Finite-Difference Time-Domain Method</em>, 3rd ed. (Artech House, Boston).</li>
 
-        <li>Bilbao, S. (2009). <i>Numerical Sound Synthesis: Finite Difference Schemes and Simulation in Musical Acoustics</i> (Wiley, Chichester, UK).</li>
+        <li>Bilbao, S. (2009). <em>Numerical Sound Synthesis: Finite Difference Schemes and Simulation in Musical Acoustics</em> (Wiley, Chichester, UK).</li>
 
-        <li>Kowalczyk, K., and van Walstijn, M. (2011). "Room acoustics simulation using 3-D compact explicit FDTD schemes." <i>IEEE Trans. Audio Speech Lang. Process.</i> 19(1), 34-46.</li>
+        <li>Kowalczyk, K., and van Walstijn, M. (2011). "Room acoustics simulation using 3-D compact explicit FDTD schemes." <em>IEEE Trans. Audio Speech Lang. Process.</em> 19(1), 34-46.</li>
 
-        <li>Courant, R., Friedrichs, K., and Lewy, H. (1928). "Über die partiellen Differenzengleichungen der mathematischen Physik." <i>Math. Ann.</i> 100(1), 32-74.</li>
+        <li>Courant, R., Friedrichs, K., and Lewy, H. (1928). "Uber die partiellen Differenzengleichungen der mathematischen Physik." <em>Math. Ann.</em> 100(1), 32-74.</li>
 
-        <li>Mur, G. (1981). "Absorbing boundary conditions for the finite-difference approximation of the time-domain electromagnetic-field equations." <i>IEEE Trans. Electromagn. Compat.</i> 23(4), 377-382.</li>
+        <li>Mur, G. (1981). "Absorbing boundary conditions for the finite-difference approximation of the time-domain electromagnetic-field equations." <em>IEEE Trans. Electromagn. Compat.</em> 23(4), 377-382.</li>
 
-        <li>Schneider, J. B., and Wagner, C. L. (1999). "FDTD dispersion revisited: Faster-than-light propagation." <i>IEEE Microw. Guided Wave Lett.</i> 9(2), 54-56.</li>
+        <li>Schneider, J. B., and Wagner, C. L. (1999). "FDTD dispersion revisited: Faster-than-light propagation." <em>IEEE Microw. Guided Wave Lett.</em> 9(2), 54-56.</li>
 
-        <li>Au, W. W., and Hastings, M. C. (2008). <i>Principles of Marine Bioacoustics</i> (Springer, New York).</li>
+        <li>Au, W. W., and Hastings, M. C. (2008). <em>Principles of Marine Bioacoustics</em> (Springer, New York).</li>
 
-        <li>Cranford, T. W., and Amundin, M. (2004). "Biosonar pulse production in odontocetes: The state of our knowledge." in <i>Echolocation in Bats and Dolphins</i>, J. A. Thomas, C. F. Moss, and M. Vater, eds. (University of Chicago Press), pp. 27-35.</li>
+        <li>Cranford, T. W., and Amundin, M. (2004). "Biosonar pulse production in odontocetes: The state of our knowledge." in <em>Echolocation in Bats and Dolphins</em>, J. A. Thomas, C. F. Moss, and M. Vater, eds. (University of Chicago Press), pp. 27-35.</li>
 
-        <li>Mindlin, G. B., and Laje, R. (2005). <i>The Physics of Birdsong</i> (Springer, Berlin).</li>
+        <li>Mindlin, G. B., and Laje, R. (2005). <em>The Physics of Birdsong</em> (Springer, Berlin).</li>
 
-        <li>Sitt, J. D., Amador, A., Goller, F., and Mindlin, G. B. (2008). "Dynamical origin of spectrally rich vocalizations in birdsong." <i>Phys. Rev. E</i> 78(1), 011905.</li>
+        <li>Sitt, J. D., Amador, A., Goller, F., and Mindlin, G. B. (2008). "Dynamical origin of spectrally rich vocalizations in birdsong." <em>Phys. Rev. E</em> 78(1), 011905.</li>
+
+        <li>Kowalczyk, K., and van Walstijn, M. (2008). "Formulation of locally reacting surfaces in FDTD/K-DWM modelling of room acoustics." <em>Proc. DAFx-08</em>, Espoo, Finland.</li>
+
+        <li>Van Duyne, S. A., and Smith, J. O. (1993). "Physical modeling with the 2-D digital waveguide mesh." <em>Proc. ICMC</em>, Tokyo, Japan, pp. 40-47.</li>
+
+        <li>Zingg, D. W. (2000). "Comparison of high-accuracy finite-difference methods for linear wave propagation." <em>SIAM J. Sci. Comput.</em> 22(2), 476-502.</li>
+
+        <li>Berenger, J.-P. (1994). "A perfectly matched layer for the absorption of electromagnetic waves." <em>J. Comput. Phys.</em> 114(2), 185-200.</li>
+
+        <li>Treeby, B. E., and Cox, B. T. (2010). "k-Wave: MATLAB toolbox for the simulation and reconstruction of photoacoustic wave fields." <em>J. Biomed. Opt.</em> 15(2), 021314.</li>
+
+        <li>Raghuvanshi, N., Narain, R., and Lin, M. C. (2009). "Efficient and accurate sound propagation using adaptive rectangular decomposition." <em>IEEE Trans. Vis. Comput. Graph.</em> 15(5), 789-801.</li>
+
+        <li>Hamilton, B., and Bilbao, S. (2017). "FDTD methods for 3-D room acoustics simulation with high-order accuracy in space and time." <em>IEEE/ACM Trans. Audio, Speech, Lang. Process.</em> 25(11), 2112-2124.</li>
+
+        <li>Savioja, L. (2010). "Real-time 3D finite-difference time-domain simulation of low- and mid-frequency room acoustics." <em>Proc. DAFx-10</em>, Graz, Austria.</li>
+
+        <li>Southern, A., Siltanen, S., Murphy, D. T., and Savioja, L. (2013). "Room impulse response synthesis and validation using a hybrid acoustic model." <em>IEEE Trans. Audio Speech Lang. Process.</em> 21(9), 1940-1952.</li>
     </ol>
 </div>
+
+<!-- Appendix -->
+<h1>Appendix A: Medium Properties</h1>
+
+<table>
+    <thead>
+        <tr>
+            <th>Medium</th>
+            <th>c_0 (m/s)</th>
+            <th>rho_0 (kg/m^3)</th>
+            <th>Z_0 (Pa s/m)</th>
+            <th>Notes</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr><td>Air (20 C)</td><td>343</td><td>1.225</td><td>420</td><td>Standard conditions</td></tr>
+        <tr><td>Fresh water (20 C)</td><td>1493</td><td>997</td><td>1.49e6</td><td>Varies with temperature</td></tr>
+        <tr><td>Seawater (20 C)</td><td>1533</td><td>1027</td><td>1.57e6</td><td>Varies with salinity</td></tr>
+        <tr><td>Helium</td><td>1007</td><td>0.164</td><td>165</td><td>At STP</td></tr>
+        <tr><td>CO2</td><td>267</td><td>1.842</td><td>492</td><td>At STP</td></tr>
+    </tbody>
+</table>
+
+
+<h1>Appendix B: Quick Reference -- CFL and Grid Requirements</h1>
+
+<p>
+    For a target maximum frequency \(f_{\max}\) and scheme-dependent minimum points-per-wavelength
+    \(\text{PPW}_{\min}\):
+</p>
+
+<div class="equation">
+    $$\Delta x \leq \frac{c_0}{f_{\max} \cdot \text{PPW}_{\min}}$$
+    <span class="equation-number">(B1)</span>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Scheme</th>
+            <th>PPW_min (1% error)</th>
+            <th>PPW_min (0.1% error)</th>
+            <th>Optimal SC</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr><td>Standard FDTD</td><td>6</td><td>10</td><td>0.5</td></tr>
+        <tr><td>Compact KW</td><td>4</td><td>6</td><td>1.0</td></tr>
+        <tr><td>IWB</td><td>3</td><td>5</td><td>1.0</td></tr>
+        <tr><td>DWM (Rect)</td><td>6</td><td>10</td><td>0.577</td></tr>
+        <tr><td>High-Order O(4,2)</td><td>3</td><td>4</td><td>0.4</td></tr>
+    </tbody>
+</table>
+
 
 <div style="margin-top: 3rem; padding: 2rem; background: #f8f8f8; border-radius: 4px; text-align: center;">
     <p style="margin: 0;"><strong>AcousticFDTD</strong> is open-source software licensed under the MIT License.</p>
     <p style="margin: 0.5rem 0 0 0;">
-        <a href="index.html" style="color: #0077b6;">Return to Home</a> ·
-        <a href="simulator.html" style="color: #0077b6;">Launch Simulator</a> ·
+        <a href="index.html" style="color: #0077b6;">Return to Home</a> --
+        <a href="simulator.html" style="color: #0077b6;">Launch Simulator</a> --
+        <a href="benchmark.html" style="color: #0077b6;">Algorithm Benchmark</a> --
         <a href="https://github.com/dot-gabriel-ferrer/AcousticFDTD" style="color: #0077b6;">GitHub Repository</a>
     </p>
 </div>

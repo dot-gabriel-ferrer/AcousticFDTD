@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AcousticFDTD -- Algorithm Benchmark</title>
+    <meta name="description" content="Comprehensive benchmark comparing multiple wave propagation algorithms: FDTD, Compact FDTD, IWB, DWM, High-Order FDTD">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        .bench-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .bench-header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .bench-header h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .bench-header p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* Config Panel */
+        .bench-config {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .bench-config .config-title {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 0.8rem;
+        }
+
+        .config-field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .config-field label {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            font-weight: 500;
+        }
+
+        .config-field input,
+        .config-field select {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.4rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.82rem;
+            font-family: 'JetBrains Mono', monospace;
+            outline: none;
+            transition: all var(--transition);
+        }
+
+        .config-field input:focus,
+        .config-field select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.15);
+        }
+
+        /* Algorithm selection */
+        .algo-selector {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .algo-selector .config-title {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .algo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 0.6rem;
+        }
+
+        .algo-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0.8rem 1rem;
+            cursor: pointer;
+            transition: all var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .algo-card:hover {
+            border-color: var(--accent-dim);
+        }
+
+        .algo-card.selected {
+            border-color: var(--accent);
+            background: rgba(14, 165, 233, 0.06);
+            box-shadow: 0 0 0 1px var(--accent-dim);
+        }
+
+        .algo-card input[type="checkbox"] {
+            accent-color: var(--accent);
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+        }
+
+        .algo-card .algo-info h4 {
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .algo-card .algo-info p {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 0.15rem;
+        }
+
+        /* Run controls */
+        .bench-controls {
+            display: flex;
+            gap: 0.8rem;
+            margin-bottom: 1.5rem;
+            align-items: center;
+        }
+
+        .bench-controls .btn {
+            flex: 0;
+            min-width: 140px;
+        }
+
+        #benchStatus {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Results */
+        .results-section {
+            display: none;
+        }
+
+        .results-section.visible {
+            display: block;
+        }
+
+        .results-table-wrap {
+            overflow-x: auto;
+            margin-bottom: 1.5rem;
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .results-table th,
+        .results-table td {
+            padding: 0.6rem 0.8rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-subtle);
+            white-space: nowrap;
+        }
+
+        .results-table th {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--accent);
+            font-weight: 600;
+            border-bottom: 2px solid var(--border);
+            background: var(--bg-card);
+        }
+
+        .results-table tr:hover td {
+            background: rgba(14, 165, 233, 0.03);
+        }
+
+        .results-table td.num {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .results-table td.best {
+            color: var(--accent-green);
+            font-weight: 600;
+        }
+
+        .results-table td.worst {
+            color: var(--accent-red);
+        }
+
+        /* Charts */
+        .chart-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .chart-panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+        }
+
+        .chart-panel .chart-title {
+            padding: 0.5rem 0.9rem;
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            background: rgba(0, 0, 0, 0.2);
+            font-weight: 500;
+        }
+
+        .chart-panel canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        /* Algorithm descriptions */
+        .algo-descriptions {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .algo-descriptions .config-title {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .algo-desc-item {
+            margin-bottom: 1.2rem;
+            padding-bottom: 1.2rem;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .algo-desc-item:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .algo-desc-item h4 {
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .algo-desc-item p {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            line-height: 1.7;
+        }
+
+        .algo-desc-item .algo-meta {
+            display: flex;
+            gap: 1.2rem;
+            margin-top: 0.5rem;
+            font-size: 0.72rem;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-muted);
+        }
+
+        .algo-desc-item .algo-meta span {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        @media (max-width: 768px) {
+            .chart-row {
+                grid-template-columns: 1fr;
+            }
+            .config-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .algo-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+    <div>
+        <h1>AcousticFDTD</h1>
+        <span class="subtitle">Algorithm Benchmark -- Wave Propagation</span>
+    </div>
+    <div class="header-links">
+        <a href="index.html">Home</a>
+        <a href="simulator.html">Simulator</a>
+        <a href="benchmark.html">Benchmark</a>
+        <a href="documentation.html">Documentation</a>
+        <a href="https://github.com/dot-gabriel-ferrer/AcousticFDTD" target="_blank">GitHub</a>
+    </div>
+</header>
+
+<div class="bench-container">
+
+    <div class="bench-header">
+        <h2>Algorithm Benchmark</h2>
+        <p>Compare multiple wave propagation algorithms for accuracy, performance, and stability</p>
+    </div>
+
+    <!-- Configuration -->
+    <div class="bench-config">
+        <div class="config-title">Simulation Parameters</div>
+        <div class="config-grid">
+            <div class="config-field">
+                <label>Room X [m]</label>
+                <input type="number" id="bDimX" value="1.0" min="0.2" max="5" step="0.1">
+            </div>
+            <div class="config-field">
+                <label>Room Y [m]</label>
+                <input type="number" id="bDimY" value="1.0" min="0.2" max="5" step="0.1">
+            </div>
+            <div class="config-field">
+                <label>Room Z [m]</label>
+                <input type="number" id="bDimZ" value="1.0" min="0.2" max="5" step="0.1">
+            </div>
+            <div class="config-field">
+                <label>Resolution [m]</label>
+                <input type="number" id="bDres" value="0.05" min="0.01" max="0.5" step="0.01">
+            </div>
+            <div class="config-field">
+                <label>Sim Time [s]</label>
+                <input type="number" id="bSimTime" value="0.01" min="0.001" max="0.5" step="0.001">
+            </div>
+            <div class="config-field">
+                <label>Medium</label>
+                <select id="bMedium">
+                    <option value="air" selected>Air (343 m/s)</option>
+                    <option value="water">Water (1493 m/s)</option>
+                </select>
+            </div>
+            <div class="config-field">
+                <label>Source Type</label>
+                <select id="bSrcType">
+                    <option value="gaussian" selected>Gaussian Pulse</option>
+                    <option value="impulse">Impulse</option>
+                    <option value="sine">Sine 500 Hz</option>
+                </select>
+            </div>
+            <div class="config-field">
+                <label>Boundary</label>
+                <select id="bBoundary">
+                    <option value="reflective" selected>Reflective</option>
+                    <option value="absorbing">Absorbing</option>
+                    <option value="periodic">Periodic</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Algorithm Selection -->
+    <div class="algo-selector">
+        <div class="config-title">Select Algorithms</div>
+        <div class="algo-grid">
+            <div class="algo-card selected" data-algo="standard-fdtd">
+                <input type="checkbox" checked>
+                <div class="algo-info">
+                    <h4>Standard FDTD (Yee)</h4>
+                    <p>Staggered-grid leapfrog, 2nd order</p>
+                </div>
+            </div>
+            <div class="algo-card selected" data-algo="compact-fdtd">
+                <input type="checkbox" checked>
+                <div class="algo-info">
+                    <h4>Compact Explicit (KW)</h4>
+                    <p>27-point stencil, reduced dispersion</p>
+                </div>
+            </div>
+            <div class="algo-card selected" data-algo="iwb-fdtd">
+                <input type="checkbox" checked>
+                <div class="algo-info">
+                    <h4>Interpolated Wideband</h4>
+                    <p>IWB scheme, wideband accuracy</p>
+                </div>
+            </div>
+            <div class="algo-card selected" data-algo="dwm-rect">
+                <input type="checkbox" checked>
+                <div class="algo-info">
+                    <h4>Waveguide Mesh (Rect)</h4>
+                    <p>W-type scattering junctions</p>
+                </div>
+            </div>
+            <div class="algo-card selected" data-algo="high-order-fdtd">
+                <input type="checkbox" checked>
+                <div class="algo-info">
+                    <h4>High-Order FDTD (O4)</h4>
+                    <p>4th-order spatial, 2nd-order time</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="bench-controls">
+        <button id="btnRunBench" class="btn btn-primary">Run Benchmark</button>
+        <button id="btnSelectAll" class="btn">Select All</button>
+        <span id="benchStatus">Ready</span>
+    </div>
+
+    <!-- Results -->
+    <div id="resultsSection" class="results-section">
+
+        <div class="results-table-wrap">
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Algorithm</th>
+                        <th>Grid</th>
+                        <th>dt (us)</th>
+                        <th>Steps</th>
+                        <th>Time (ms)</th>
+                        <th>Steps/s</th>
+                        <th>Mnodes/s</th>
+                        <th>f_max (Hz)</th>
+                        <th>Peak P (Pa)</th>
+                        <th>Mean Freq Err (Hz)</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsBody">
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Charts -->
+        <div class="chart-row">
+            <div class="chart-panel">
+                <div class="chart-title">Performance -- Steps per Second</div>
+                <div style="padding: 0.5rem;">
+                    <canvas id="perfChart" width="500" height="280"></canvas>
+                </div>
+            </div>
+            <div class="chart-panel">
+                <div class="chart-title">Performance -- Meganodes per Second</div>
+                <div style="padding: 0.5rem;">
+                    <canvas id="mnodesChart" width="500" height="280"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-row">
+            <div class="chart-panel">
+                <div class="chart-title">Microphone Signal -- Time Domain</div>
+                <div style="padding: 0.5rem;">
+                    <canvas id="signalChart" width="500" height="280"></canvas>
+                </div>
+            </div>
+            <div class="chart-panel">
+                <div class="chart-title">Frequency Accuracy -- FFT Comparison</div>
+                <div style="padding: 0.5rem;">
+                    <canvas id="fftChart" width="500" height="280"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Algorithm Descriptions -->
+    <div class="algo-descriptions">
+        <div class="config-title">Algorithm Reference</div>
+
+        <div class="algo-desc-item">
+            <h4>1. Standard FDTD (Yee Scheme)</h4>
+            <p>
+                The foundational staggered-grid leapfrog scheme originally developed by Yee (1966) for
+                electromagnetics and adapted for acoustics. Uses second-order centered finite differences
+                for both spatial and temporal derivatives. Pressure and velocity fields are staggered by
+                half a grid cell in both space and time.
+            </p>
+            <div class="algo-meta">
+                <span>Order: O(2,2)</span>
+                <span>Stencil: 7-point</span>
+                <span>CFL: Sc &lt;= 1/sqrt(3)</span>
+                <span>Memory: 8N</span>
+            </div>
+        </div>
+
+        <div class="algo-desc-item">
+            <h4>2. Compact Explicit FDTD (Kowalczyk-van Walstijn)</h4>
+            <p>
+                A 27-point stencil scheme that combines face, edge, and corner neighbours with optimized
+                weights to minimize numerical dispersion. The compact formulation allows the Courant number
+                to reach Sc = 1 in 3D, making it isotropic-optimal. Dramatically reduces direction-dependent
+                dispersion compared to the standard scheme.
+            </p>
+            <div class="algo-meta">
+                <span>Order: O(2,2)+</span>
+                <span>Stencil: 27-point</span>
+                <span>CFL: Sc = 1 (optimal)</span>
+                <span>Memory: 3N</span>
+            </div>
+        </div>
+
+        <div class="algo-desc-item">
+            <h4>3. Interpolated Wideband (IWB)</h4>
+            <p>
+                An extension of the compact scheme that uses interpolation between standard and diagonal
+                Laplacian operators. The interpolation coefficients are optimized for minimal dispersion
+                across the widest possible bandwidth, achieving near-exact phase velocity up to 0.8 of
+                the Nyquist frequency.
+            </p>
+            <div class="algo-meta">
+                <span>Order: O(2,2)++</span>
+                <span>Stencil: 13-point</span>
+                <span>CFL: Sc = 1</span>
+                <span>Memory: 3N</span>
+            </div>
+        </div>
+
+        <div class="algo-desc-item">
+            <h4>4. Digital Waveguide Mesh (Rectilinear)</h4>
+            <p>
+                A physically-inspired model based on networks of digital waveguides. Each junction scatters
+                incoming travelling waves to its neighbours via the scattering equation. The rectilinear
+                topology uses 6-connected nodes. Equivalent to the standard FDTD under certain conditions,
+                but the waveguide formulation offers advantages for passivity analysis and boundary modeling.
+            </p>
+            <div class="algo-meta">
+                <span>Order: O(2,2)</span>
+                <span>Topology: 6-connected</span>
+                <span>CFL: Sc = 1/sqrt(3)</span>
+                <span>Memory: 12N</span>
+            </div>
+        </div>
+
+        <div class="algo-desc-item">
+            <h4>5. High-Order FDTD (4th-Order Spatial)</h4>
+            <p>
+                Uses 4th-order centered finite differences for spatial derivatives while retaining
+                2nd-order temporal accuracy. The wider stencil (using i-2, i-1, i, i+1, i+2) provides
+                significantly reduced numerical dispersion at the cost of a slightly stricter CFL condition
+                and more complex boundary treatment. Ideal for long-range propagation.
+            </p>
+            <div class="algo-meta">
+                <span>Order: O(4,2)</span>
+                <span>Stencil: 13-point</span>
+                <span>CFL: Sc &lt;= 0.49</span>
+                <span>Memory: 8N</span>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Footer -->
+<footer class="footer">
+    AcousticFDTD v1.0 -- Algorithm Benchmark Framework |
+    Author: Elias Gabriel Ferrer Jorge |
+    <a href="https://github.com/dot-gabriel-ferrer/AcousticFDTD" style="color: var(--accent)">GitHub</a>
+</footer>
+
+<!-- Scripts -->
+<script src="js/benchmark.js"></script>
+<script>
+"use strict";
+
+(function () {
+
+    const runner = new BenchmarkRunner();
+    let benchResults = [];
+
+    // Algorithm card selection
+    const algoCards = document.querySelectorAll(".algo-card");
+    algoCards.forEach(function (card) {
+        card.addEventListener("click", function () {
+            var cb = card.querySelector("input[type='checkbox']");
+            cb.checked = !cb.checked;
+            card.classList.toggle("selected", cb.checked);
+        });
+        card.querySelector("input[type='checkbox']").addEventListener("click", function (e) {
+            e.stopPropagation();
+            card.classList.toggle("selected", this.checked);
+        });
+    });
+
+    document.getElementById("btnSelectAll").addEventListener("click", function () {
+        var allChecked = true;
+        algoCards.forEach(function (c) {
+            if (!c.querySelector("input").checked) allChecked = false;
+        });
+        algoCards.forEach(function (c) {
+            c.querySelector("input").checked = !allChecked;
+            c.classList.toggle("selected", !allChecked);
+        });
+    });
+
+    // Run benchmark
+    document.getElementById("btnRunBench").addEventListener("click", function () {
+        var statusEl = document.getElementById("benchStatus");
+        statusEl.textContent = "Running benchmark...";
+
+        var mediumPresets = {
+            air: { c0: 343, rho: 1.225 },
+            water: { c0: 1493, rho: 997 }
+        };
+
+        var med = mediumPresets[document.getElementById("bMedium").value] || mediumPresets.air;
+
+        var config = {
+            dims: [
+                parseFloat(document.getElementById("bDimX").value),
+                parseFloat(document.getElementById("bDimY").value),
+                parseFloat(document.getElementById("bDimZ").value)
+            ],
+            dres: parseFloat(document.getElementById("bDres").value),
+            c0: med.c0,
+            rho: med.rho,
+            boundary: document.getElementById("bBoundary").value
+        };
+
+        var simTime = parseFloat(document.getElementById("bSimTime").value);
+
+        var source = {
+            position: [config.dims[0] * 0.5, config.dims[1] * 0.5, config.dims[2] * 0.5],
+            frequency: 500,
+            amplitude: 1.0,
+            type: document.getElementById("bSrcType").value,
+            injection: "soft"
+        };
+
+        var receiver = {
+            position: [config.dims[0] * 0.25, config.dims[1] * 0.25, config.dims[2] * 0.5],
+            label: "Benchmark Mic"
+        };
+
+        // Get selected algorithms
+        var selectedAlgos = [];
+        algoCards.forEach(function (card) {
+            if (card.querySelector("input").checked) {
+                selectedAlgos.push(card.getAttribute("data-algo"));
+            }
+        });
+
+        if (selectedAlgos.length === 0) {
+            statusEl.textContent = "Select at least one algorithm.";
+            return;
+        }
+
+        // Run asynchronously to not block UI
+        setTimeout(function () {
+            benchResults = [];
+            var startAll = performance.now();
+
+            for (var i = 0; i < selectedAlgos.length; i++) {
+                var algoId = selectedAlgos[i];
+                statusEl.textContent = "Running: " + algoId + " (" + (i + 1) + "/" + selectedAlgos.length + ")...";
+
+                try {
+                    var result = runner.runSingle(algoId, config, source, receiver,
+                        Math.floor(simTime / (new runner.algorithms[algoId](config)).dt));
+
+                    var accuracy = runner.computeAccuracy(result, config.dims, config.c0);
+                    result.accuracy = accuracy;
+                    benchResults.push(result);
+                } catch (err) {
+                    benchResults.push({
+                        algorithmId: algoId,
+                        name: algoId,
+                        error: err.message,
+                        steps: 0, elapsedMs: 0
+                    });
+                }
+            }
+
+            var totalTime = performance.now() - startAll;
+            statusEl.textContent = "Complete -- " + benchResults.length + " algorithms tested in " +
+                totalTime.toFixed(0) + " ms";
+
+            displayResults(benchResults, config);
+        }, 50);
+    });
+
+    function displayResults(results, config) {
+        var section = document.getElementById("resultsSection");
+        section.classList.add("visible");
+
+        // Populate table
+        var tbody = document.getElementById("resultsBody");
+        tbody.innerHTML = "";
+
+        // Find best/worst for highlighting
+        var speeds = results.filter(function (r) { return r.stepsPerSecond; }).map(function (r) { return r.stepsPerSecond; });
+        var maxSpeed = Math.max.apply(null, speeds);
+        var minSpeed = Math.min.apply(null, speeds);
+
+        for (var i = 0; i < results.length; i++) {
+            var r = results[i];
+            var tr = document.createElement("tr");
+
+            var speedClass = "";
+            if (r.stepsPerSecond === maxSpeed) speedClass = "best";
+            else if (r.stepsPerSecond === minSpeed) speedClass = "worst";
+
+            tr.innerHTML =
+                '<td>' + (r.name || r.algorithmId) + '</td>' +
+                '<td class="num">' + (r.grid || "N/A") + '</td>' +
+                '<td class="num">' + (r.dt ? (r.dt * 1e6).toFixed(2) : "N/A") + '</td>' +
+                '<td class="num">' + (r.steps || 0) + '</td>' +
+                '<td class="num ' + speedClass + '">' + (r.elapsedMs ? r.elapsedMs.toFixed(1) : "N/A") + '</td>' +
+                '<td class="num ' + speedClass + '">' + (r.stepsPerSecond ? Math.floor(r.stepsPerSecond).toLocaleString() : "N/A") + '</td>' +
+                '<td class="num">' + (r.nodesPerSecond ? (r.nodesPerSecond / 1e6).toFixed(2) : "N/A") + '</td>' +
+                '<td class="num">' + (r.maxFreq ? Math.floor(r.maxFreq) : "N/A") + '</td>' +
+                '<td class="num">' + (r.accuracy && r.accuracy.peakPressure ? r.accuracy.peakPressure.toFixed(4) : "N/A") + '</td>' +
+                '<td class="num">' + (r.accuracy && r.accuracy.meanFreqError !== undefined ? r.accuracy.meanFreqError.toFixed(1) : "N/A") + '</td>';
+
+            if (r.error) {
+                tr.innerHTML = '<td>' + (r.name || r.algorithmId) + '</td>' +
+                    '<td colspan="9" style="color: var(--accent-red)">' + r.error + '</td>';
+            }
+
+            tbody.appendChild(tr);
+        }
+
+        drawBarChart("perfChart", results, "stepsPerSecond", "Steps/s");
+        drawBarChart("mnodesChart", results, "nodesPerSecond", "Nodes/s", 1e6);
+        drawSignalChart("signalChart", results);
+        drawFFTChart("fftChart", results);
+    }
+
+    // Bar chart renderer
+    function drawBarChart(canvasId, results, key, label, divisor) {
+        var canvas = document.getElementById(canvasId);
+        var ctx = canvas.getContext("2d");
+        var W = canvas.width, H = canvas.height;
+        var dpr = window.devicePixelRatio || 1;
+        canvas.width = W * dpr;
+        canvas.height = H * dpr;
+        canvas.style.width = W + "px";
+        canvas.style.height = H + "px";
+        ctx.scale(dpr, dpr);
+
+        ctx.clearRect(0, 0, W, H);
+
+        var validResults = results.filter(function (r) { return r[key]; });
+        if (validResults.length === 0) return;
+
+        var colors = ["#0ea5e9", "#a78bfa", "#10b981", "#eab308", "#ef4444", "#f97316", "#06b6d4"];
+        var margin = { top: 20, right: 20, bottom: 50, left: 70 };
+        var plotW = W - margin.left - margin.right;
+        var plotH = H - margin.top - margin.bottom;
+        var barW = Math.min(50, plotW / validResults.length - 10);
+
+        var maxVal = Math.max.apply(null, validResults.map(function (r) { return r[key]; }));
+        if (divisor) maxVal = maxVal / divisor;
+
+        // Axes
+        ctx.strokeStyle = "#1e293b";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(margin.left, margin.top);
+        ctx.lineTo(margin.left, margin.top + plotH);
+        ctx.lineTo(margin.left + plotW, margin.top + plotH);
+        ctx.stroke();
+
+        // Y-axis ticks
+        ctx.fillStyle = "#4a5568";
+        ctx.font = "10px 'JetBrains Mono', monospace";
+        ctx.textAlign = "right";
+        for (var t = 0; t <= 4; t++) {
+            var yVal = maxVal * t / 4;
+            var yPos = margin.top + plotH - (plotH * t / 4);
+            ctx.fillText(yVal >= 1000 ? (yVal / 1000).toFixed(1) + "K" : yVal.toFixed(0), margin.left - 8, yPos + 3);
+            ctx.strokeStyle = "#162032";
+            ctx.beginPath();
+            ctx.moveTo(margin.left, yPos);
+            ctx.lineTo(margin.left + plotW, yPos);
+            ctx.stroke();
+        }
+
+        // Bars
+        var gap = plotW / validResults.length;
+        for (var i = 0; i < validResults.length; i++) {
+            var r = validResults[i];
+            var val = divisor ? r[key] / divisor : r[key];
+            var barH = (val / maxVal) * plotH;
+            var x = margin.left + gap * i + (gap - barW) / 2;
+            var y = margin.top + plotH - barH;
+
+            ctx.fillStyle = colors[i % colors.length];
+            ctx.fillRect(x, y, barW, barH);
+
+            // Value on top
+            ctx.fillStyle = "#e2e8f0";
+            ctx.font = "9px 'JetBrains Mono', monospace";
+            ctx.textAlign = "center";
+            ctx.fillText(val >= 1000 ? (val / 1000).toFixed(1) + "K" : val.toFixed(0), x + barW / 2, y - 5);
+
+            // Label below
+            ctx.fillStyle = "#8898aa";
+            ctx.font = "8px 'Inter', sans-serif";
+            ctx.save();
+            ctx.translate(x + barW / 2, margin.top + plotH + 8);
+            ctx.rotate(Math.PI / 6);
+            ctx.textAlign = "left";
+            var shortName = r.name.length > 18 ? r.name.substring(0, 16) + ".." : r.name;
+            ctx.fillText(shortName, 0, 0);
+            ctx.restore();
+        }
+
+        // Label
+        ctx.fillStyle = "#8898aa";
+        ctx.font = "10px 'Inter', sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(label, margin.left + plotW / 2, H - 2);
+    }
+
+    // Signal overlay chart
+    function drawSignalChart(canvasId, results) {
+        var canvas = document.getElementById(canvasId);
+        var ctx = canvas.getContext("2d");
+        var W = canvas.width, H = canvas.height;
+        var dpr = window.devicePixelRatio || 1;
+        canvas.width = W * dpr;
+        canvas.height = H * dpr;
+        canvas.style.width = W + "px";
+        canvas.style.height = H + "px";
+        ctx.scale(dpr, dpr);
+        ctx.clearRect(0, 0, W, H);
+
+        var validResults = results.filter(function (r) { return r.receiverData && r.receiverData.length > 0; });
+        if (validResults.length === 0) return;
+
+        var colors = ["#0ea5e9", "#a78bfa", "#10b981", "#eab308", "#ef4444"];
+        var margin = { top: 20, right: 20, bottom: 30, left: 60 };
+        var plotW = W - margin.left - margin.right;
+        var plotH = H - margin.top - margin.bottom;
+
+        // Find global max
+        var globalMax = 0;
+        var maxLen = 0;
+        for (var i = 0; i < validResults.length; i++) {
+            var d = validResults[i].receiverData;
+            if (d.length > maxLen) maxLen = d.length;
+            for (var j = 0; j < d.length; j++) {
+                var absv = Math.abs(d[j]);
+                if (absv > globalMax) globalMax = absv;
+            }
+        }
+        if (globalMax === 0) globalMax = 1;
+
+        // Axes
+        ctx.strokeStyle = "#1e293b";
+        ctx.beginPath();
+        ctx.moveTo(margin.left, margin.top);
+        ctx.lineTo(margin.left, margin.top + plotH);
+        ctx.lineTo(margin.left + plotW, margin.top + plotH);
+        ctx.stroke();
+
+        // Zero line
+        var zeroY = margin.top + plotH / 2;
+        ctx.strokeStyle = "#162032";
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(margin.left, zeroY);
+        ctx.lineTo(margin.left + plotW, zeroY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Draw each signal
+        for (var i = 0; i < validResults.length; i++) {
+            var r = validResults[i];
+            var data = r.receiverData;
+            ctx.strokeStyle = colors[i % colors.length];
+            ctx.lineWidth = 1.2;
+            ctx.globalAlpha = 0.8;
+            ctx.beginPath();
+            for (var j = 0; j < data.length; j++) {
+                var x = margin.left + (j / maxLen) * plotW;
+                var y = zeroY - (data[j] / globalMax) * (plotH / 2);
+                if (j === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            ctx.globalAlpha = 1.0;
+        }
+
+        // Legend
+        var legendX = margin.left + 8;
+        var legendY = margin.top + 10;
+        for (var i = 0; i < validResults.length; i++) {
+            ctx.fillStyle = colors[i % colors.length];
+            ctx.fillRect(legendX, legendY + i * 14, 12, 8);
+            ctx.fillStyle = "#8898aa";
+            ctx.font = "9px 'Inter', sans-serif";
+            ctx.textAlign = "left";
+            var shortName = validResults[i].name.length > 20 ? validResults[i].name.substring(0, 18) + ".." : validResults[i].name;
+            ctx.fillText(shortName, legendX + 16, legendY + i * 14 + 8);
+        }
+    }
+
+    // FFT comparison chart
+    function drawFFTChart(canvasId, results) {
+        var canvas = document.getElementById(canvasId);
+        var ctx = canvas.getContext("2d");
+        var W = canvas.width, H = canvas.height;
+        var dpr = window.devicePixelRatio || 1;
+        canvas.width = W * dpr;
+        canvas.height = H * dpr;
+        canvas.style.width = W + "px";
+        canvas.style.height = H + "px";
+        ctx.scale(dpr, dpr);
+        ctx.clearRect(0, 0, W, H);
+
+        var validResults = results.filter(function (r) { return r.receiverData && r.receiverData.length > 10; });
+        if (validResults.length === 0) return;
+
+        var colors = ["#0ea5e9", "#a78bfa", "#10b981", "#eab308", "#ef4444"];
+        var margin = { top: 20, right: 20, bottom: 30, left: 60 };
+        var plotW = W - margin.left - margin.right;
+        var plotH = H - margin.top - margin.bottom;
+
+        // Compute FFT for each
+        var spectra = [];
+        var globalMaxMag = 0;
+        var maxFreq = 0;
+
+        for (var ri = 0; ri < validResults.length; ri++) {
+            var data = validResults[ri].receiverData;
+            var N = data.length;
+            var n2 = 1;
+            while (n2 < N) n2 <<= 1;
+
+            var re = new Float64Array(n2);
+            var im = new Float64Array(n2);
+            for (var i = 0; i < N; i++) re[i] = data[i];
+
+            // Bit-reversal
+            var j = 0;
+            for (var i = 0; i < n2; i++) {
+                if (i < j) {
+                    var tmp = re[i]; re[i] = re[j]; re[j] = tmp;
+                    tmp = im[i]; im[i] = im[j]; im[j] = tmp;
+                }
+                var m = n2 >> 1;
+                while (m >= 1 && j >= m) { j -= m; m >>= 1; }
+                j += m;
+            }
+
+            for (var size = 2; size <= n2; size <<= 1) {
+                var half = size >> 1;
+                var angle = -2 * Math.PI / size;
+                var wr = Math.cos(angle), wi = Math.sin(angle);
+                for (var i = 0; i < n2; i += size) {
+                    var cr = 1, ci = 0;
+                    for (var k = 0; k < half; k++) {
+                        var a = i + k, b = a + half;
+                        var tr = cr * re[b] - ci * im[b];
+                        var ti = cr * im[b] + ci * re[b];
+                        re[b] = re[a] - tr; im[b] = im[a] - ti;
+                        re[a] += tr; im[a] += ti;
+                        var nr = cr * wr - ci * wi;
+                        ci = cr * wi + ci * wr;
+                        cr = nr;
+                    }
+                }
+            }
+
+            var fs = 1.0 / validResults[ri].dt;
+            var halfN = n2 / 2;
+            var mag = new Float64Array(halfN);
+            for (var i = 0; i < halfN; i++) {
+                mag[i] = Math.sqrt(re[i] * re[i] + im[i] * im[i]) / N;
+                if (mag[i] > globalMaxMag) globalMaxMag = mag[i];
+            }
+            if (fs / 2 > maxFreq) maxFreq = fs / 2;
+            spectra.push({ mag: mag, fs: fs, halfN: halfN });
+        }
+
+        if (globalMaxMag === 0) globalMaxMag = 1;
+
+        // Axes
+        ctx.strokeStyle = "#1e293b";
+        ctx.beginPath();
+        ctx.moveTo(margin.left, margin.top);
+        ctx.lineTo(margin.left, margin.top + plotH);
+        ctx.lineTo(margin.left + plotW, margin.top + plotH);
+        ctx.stroke();
+
+        // Draw spectra (linear scale, limited to useful range)
+        var fLimit = Math.min(maxFreq, 5000);
+
+        for (var ri = 0; ri < spectra.length; ri++) {
+            var sp = spectra[ri];
+            ctx.strokeStyle = colors[ri % colors.length];
+            ctx.lineWidth = 1.2;
+            ctx.globalAlpha = 0.8;
+            ctx.beginPath();
+            var freqPerBin = sp.fs / (sp.halfN * 2);
+            var maxBin = Math.min(sp.halfN, Math.floor(fLimit / freqPerBin));
+            for (var i = 0; i < maxBin; i++) {
+                var x = margin.left + (i * freqPerBin / fLimit) * plotW;
+                var y = margin.top + plotH - (sp.mag[i] / globalMaxMag) * plotH;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            ctx.globalAlpha = 1.0;
+        }
+
+        // Freq labels
+        ctx.fillStyle = "#4a5568";
+        ctx.font = "9px 'JetBrains Mono', monospace";
+        ctx.textAlign = "center";
+        for (var f = 0; f <= fLimit; f += 1000) {
+            var x = margin.left + (f / fLimit) * plotW;
+            ctx.fillText(f + " Hz", x, margin.top + plotH + 15);
+        }
+    }
+
+})();
+</script>
+
+</body>
+</html>

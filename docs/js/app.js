@@ -230,6 +230,9 @@ class App {
         this.pause();
         this._createSolver();
         this._update3DView();
+        if (this.visualizer3D) {
+            this.visualizer3D.clearPressureField();
+        }
         this._updateInfo();
         this._renderFrame();
         this.stepDisplay.textContent = "Step: 0 / " + this.maxSteps;
@@ -279,6 +282,19 @@ class App {
         }
 
         this.visualizer.renderSlice(slice, markers);
+
+        // Update 3D pressure field
+        if (this.visualizer3D && this.solver.step > 0) {
+            const dims = [
+                parseFloat(this.inpDimX.value),
+                parseFloat(this.inpDimY.value),
+                parseFloat(this.inpDimZ.value)
+            ];
+            const gridSize = [this.solver.nx, this.solver.ny, this.solver.nz];
+            this.visualizer3D.updatePressureField(
+                slice, this.viewPlane, this.viewSlice, dims, gridSize
+            );
+        }
 
         // Update time and FFT plots
         if (this.solver.receivers.length > 0) {
