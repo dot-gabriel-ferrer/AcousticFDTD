@@ -142,6 +142,8 @@
                         <option value="tone">Musical Tone</option>
                         <option value="chord">Musical Chord</option>
                         <option value="glottal">Glottal Pulse</option>
+                        <option value="orca-click">Orca Click (Broadband)</option>
+                        <option value="orca-whistle">Orca Whistle (Sweep)</option>
                     </select>
                 </div>
             </div>
@@ -241,6 +243,7 @@
                         <option value="helmholtz">Helmholtz Resonator</option>
                         <option value="sphere">Rigid Sphere</option>
                         <option value="room-stage">Room with Stage</option>
+                        <option value="figure8-pool">Figure-8 Pool (Orca Sounds)</option>
                     </select>
                 </div>
             </div>
@@ -264,6 +267,14 @@
                 </div>
             </div>
             <div id="geoInfo" class="geo-info"></div>
+            <div id="resSuggestion" class="res-suggestion" style="display:none">
+                <div class="res-suggestion-header">Resolution Suggestion</div>
+                <div id="resSuggestionBody"></div>
+                <div class="res-suggestion-actions">
+                    <button id="btnApplyRecDres" class="btn btn-sm btn-primary">Apply Recommended</button>
+                    <button id="btnApplyMinDres" class="btn btn-sm">Apply Minimum</button>
+                </div>
+            </div>
             <div class="btn-group" style="margin-top: 0.5rem">
                 <button id="btnClearGeo" class="btn btn-danger btn-sm">Clear Geometry</button>
             </div>
@@ -428,6 +439,35 @@
             </div>
         </div>
 
+        <!-- Guidance Bar -->
+        <div id="guidanceBar" class="guidance-bar">
+            <div class="guidance-item" id="guidGrid"><span class="g-dot"></span><span class="g-label">Grid</span><span class="g-value" id="guidGridVal">--</span></div>
+            <div class="guidance-item" id="guidFreq"><span class="g-dot"></span><span class="g-label">f_max</span><span class="g-value" id="guidFreqVal">--</span></div>
+            <div class="guidance-item" id="guidMem"><span class="g-dot"></span><span class="g-label">Memory</span><span class="g-value" id="guidMemVal">--</span></div>
+            <div class="guidance-item" id="guidTime"><span class="g-dot"></span><span class="g-label">Est. Time</span><span class="g-value" id="guidTimeVal">--</span></div>
+            <div class="guidance-item" id="guidCFL"><span class="g-dot"></span><span class="g-label">CFL</span><span class="g-value" id="guidCFLVal">--</span></div>
+        </div>
+
+        <!-- Validation Panel -->
+        <div id="validationPanel" class="validation-panel" style="display:none">
+            <div id="validationErrors"></div>
+            <div id="validationWarnings"></div>
+            <div id="validationInfo"></div>
+        </div>
+
+        <!-- Pause Action Bar -->
+        <div id="pauseActionBar" class="pause-action-bar" style="display:none">
+            <div class="pause-info">
+                <span class="pause-icon">⏸</span>
+                <span id="pauseStatusText">Paused</span>
+            </div>
+            <div class="pause-actions">
+                <button id="btnPartialListen" class="btn btn-sm btn-success">Listen to Recording</button>
+                <button id="btnPartialExport" class="btn btn-sm">Export Partial WAV</button>
+                <button id="btnResumeSim" class="btn btn-sm btn-primary">Continue Simulation</button>
+            </div>
+        </div>
+
         <!-- Visualization Grid -->
         <div class="viz-grid">
 
@@ -436,6 +476,10 @@
                 <div class="viz-header">
                     3D Environment View
                     <span class="badge" style="background: #a855f7">3D</span>
+                    <div class="viz-header-actions">
+                        <button id="btnEditMode" class="btn-icon" title="Toggle Edit Mode">✏️</button>
+                        <button id="btnFullscreen3D" class="btn-icon" title="Fullscreen">⛶</button>
+                    </div>
                 </div>
                 <div class="viz-body" style="min-height: 400px; position: relative;">
                     <div id="viewer3D" style="width: 100%; height: 400px;"></div>
@@ -574,6 +618,10 @@
 <script src="js/geometry-loader.js"></script>
 <script src="js/wav-loader.js"></script>
 <script src="js/example-models.js"></script>
+<script src="js/param-guidance.js"></script>
+<script src="js/validation.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/controls/TransformControls.js"></script>
+<script src="js/scene-editor.js"></script>
 <script src="js/app.js"></script>
 
 <!-- Wall reflection value display -->

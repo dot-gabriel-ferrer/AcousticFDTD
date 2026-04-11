@@ -408,6 +408,96 @@ class ToneGenerator {
             { name: "Whispered /a/", type: "noise", bandwidth: [300, 3000] }
         ];
     }
+
+    /**
+     * Generate an orca (killer whale) echolocation click train.
+     * Broadband impulsive signal: ~20 clicks, 500μs each, 2ms spacing,
+     * 20kHz center frequency, Hann envelope per click.
+     *
+     * @param {number} duration - Total duration in seconds (default: 0.05)
+     * @param {number} sampleRate - Sample rate in Hz
+     * @param {number} amplitude - Peak amplitude (default: 1.0)
+     * @returns {Float64Array}
+     */
+    static generateOrcaClick(duration, sampleRate, amplitude) {
+        duration = duration || 0.05;
+        sampleRate = sampleRate || 44100;
+        amplitude = amplitude || 1.0;
+
+        const N = Math.floor(duration * sampleRate);
+        const data = new Float64Array(N);
+
+        const clickDuration = 0.0005;  // 500 μs per click
+        const clickSpacing = 0.002;    // 2 ms between clicks
+        const centerFreq = 20000;      // 20 kHz center frequency
+        const clickSamples = Math.floor(clickDuration * sampleRate);
+        const spacingSamples = Math.floor(clickSpacing * sampleRate);
+        const numClicks = Math.min(20, Math.floor(N / spacingSamples));
+
+        for (let c = 0; c < numClicks; c++) {
+            const startSample = c * spacingSamples;
+            for (let i = 0; i < clickSamples && (startSample + i) < N; i++) {
+                // Hann envelope
+                const env = 0.5 * (1 - Math.cos(2 * Math.PI * i / clickSamples));
+                const t = (startSample + i) / sampleRate;
+                // Limit center freq to Nyquist
+                const freq = Math.min(centerFreq, sampleRate * 0.45);
+                data[startSample + i] = amplitude * env * Math.sin(2 * Math.PI * freq * t);
+            }
+        }
+
+        return data;
+    }
+
+    /**
+     * Generate an orca whistle — logarithmic frequency sweep from 1kHz to 18kHz
+     * with ADSR amplitude envelope.
+     *
+     * @param {number} duration - Total duration in seconds (default: 0.5)
+     * @param {number} sampleRate - Sample rate in Hz
+     * @param {number} amplitude - Peak amplitude (default: 1.0)
+     * @returns {Float64Array}
+     */
+    static generateOrcaWhistle(duration, sampleRate, amplitude) {
+        duration = duration || 0.5;
+        sampleRate = sampleRate || 44100;
+        amplitude = amplitude || 1.0;
+
+        const N = Math.floor(duration * sampleRate);
+        const data = new Float64Array(N);
+
+        const f0 = 1000;   // Start frequency 1kHz
+        const f1 = Math.min(18000, sampleRate * 0.45);  // End frequency, limited to Nyquist
+        const attackTime = 0.02;
+        const releaseTime = 0.05;
+        const attackSamples = Math.floor(attackTime * sampleRate);
+        const releaseSamples = Math.floor(releaseTime * sampleRate);
+        const releaseStart = N - releaseSamples;
+
+        // Logarithmic frequency sweep
+        const logRatio = Math.log(f1 / f0);
+        let phase = 0;
+
+        for (let i = 0; i < N; i++) {
+            const t = i / sampleRate;
+            // Instantaneous frequency: log sweep
+            const tNorm = i / N;
+            const freq = f0 * Math.exp(logRatio * tNorm);
+            phase += 2 * Math.PI * freq / sampleRate;
+
+            // ADSR envelope (attack, sustain, release)
+            let env = 1.0;
+            if (i < attackSamples) {
+                env = i / attackSamples;
+            } else if (i >= releaseStart) {
+                env = (N - i) / releaseSamples;
+            }
+
+            data[i] = amplitude * env * Math.sin(phase);
+        }
+
+        return data;
+    }
 }
 
 if (typeof module !== "undefined") {

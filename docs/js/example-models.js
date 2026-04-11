@@ -36,7 +36,9 @@ class ExampleModels {
                     { position: "exterior", label: "External (1m)" }
                 ],
                 suggestedRoom: [0.4, 0.3, 0.3],
-                mode: "cavity"
+                mode: "cavity",
+                recommendedDres: 0.005,
+                minDres: 0.01
             },
             {
                 id: "open-tube",
@@ -48,7 +50,9 @@ class ExampleModels {
                     { position: "end", label: "Open End" }
                 ],
                 suggestedRoom: [0.6, 0.2, 0.2],
-                mode: "cavity"
+                mode: "cavity",
+                recommendedDres: 0.01,
+                minDres: 0.02
             },
             {
                 id: "horn",
@@ -60,7 +64,9 @@ class ExampleModels {
                     { position: "far-field", label: "Far Field" }
                 ],
                 suggestedRoom: [0.5, 0.4, 0.4],
-                mode: "cavity"
+                mode: "cavity",
+                recommendedDres: 0.008,
+                minDres: 0.015
             },
             {
                 id: "helmholtz",
@@ -72,7 +78,9 @@ class ExampleModels {
                     { position: "neck", label: "Neck" }
                 ],
                 suggestedRoom: [0.3, 0.3, 0.3],
-                mode: "cavity"
+                mode: "cavity",
+                recommendedDres: 0.005,
+                minDres: 0.01
             },
             {
                 id: "sphere",
@@ -84,7 +92,9 @@ class ExampleModels {
                     { position: "bright", label: "Bright Zone" }
                 ],
                 suggestedRoom: [0.5, 0.5, 0.5],
-                mode: "solid"
+                mode: "solid",
+                recommendedDres: 0.01,
+                minDres: 0.02
             },
             {
                 id: "room-stage",
@@ -96,7 +106,18 @@ class ExampleModels {
                     { position: "audience-far", label: "Far Audience" }
                 ],
                 suggestedRoom: [1.0, 0.8, 0.6],
-                mode: "solid"
+                mode: "solid",
+                recommendedDres: 0.02,
+                minDres: 0.05
+            },
+            {
+                id: "figure8-pool",
+                name: "Figure-8 Pool (Orca Sounds)",
+                description: "Figure-8 shaped pool for underwater acoustics. Use water medium.",
+                suggestedRoom: [2.0, 1.0, 0.5],
+                mode: "cavity",
+                recommendedDres: 0.02,
+                minDres: 0.04
             }
         ];
     }
@@ -549,6 +570,8 @@ class ExampleModels {
                 return ExampleModels.generateSphere();
             case "room-stage":
                 return ExampleModels.generateRoomStage();
+            case "figure8-pool":
+                return ExampleModels.generateFigure8Pool();
             default:
                 return null;
         }
@@ -603,6 +626,113 @@ class ExampleModels {
             ],
             mode: "solid"
         };
+    }
+
+    /**
+     * Generate OBJ string for a figure-8 shaped pool.
+     * Two overlapping circular pools connected by a narrow channel.
+     * Designed for underwater orca acoustics simulation.
+     * @returns {{ obj: string, sourcePos: number[], micPositions: Object[], mode: string }}
+     */
+    static generateFigure8Pool() {
+        const poolRadius = 0.35;
+        const channelWidth = 0.15;
+        const depth = 0.4;
+        const radialRes = 24;
+
+        // Centers of two pools along X axis
+        const poolACenterX = 0.5;
+        const poolACenterY = 0.5;
+        const poolBCenterX = poolACenterX + poolRadius * 1.4;
+        const poolBCenterY = 0.5;
+
+        const vertices = [];
+        const faces = [];
+
+        // Helper: generate circle outline points
+        function circlePoints(cx, cy, r, n) {
+            const pts = [];
+            for (let i = 0; i < n; i++) {
+                const angle = (2 * Math.PI * i) / n;
+                pts.push([cx + r * Math.cos(angle), cy + r * Math.sin(angle)]);
+            }
+            return pts;
+        }
+
+        const ptsA = circlePoints(poolACenterX, poolACenterY, poolRadius, radialRes);
+        const ptsB = circlePoints(poolBCenterX, poolBCenterY, poolRadius, radialRes);
+
+        // Build vertices: bottom ring, top ring for each pool
+        // Pool A bottom (z=0)
+        const baseIdx = vertices.length;
+        for (const p of ptsA) vertices.push([p[0], p[1], 0]);
+        // Pool A top (z=depth)
+        for (const p of ptsA) vertices.push([p[0], p[1], depth]);
+
+        // Pool A side walls
+        for (let i = 0; i < radialRes; i++) {
+            const i1 = (i + 1) % radialRes;
+            const b0 = baseIdx + i, b1 = baseIdx + i1;
+            const t0 = baseIdx + radialRes + i, t1 = baseIdx + radialRes + i1;
+            faces.push([b0, b1, t1]);
+            faces.push([b0, t1, t0]);
+        }
+
+        // Pool A bottom cap
+        const aCenterBottom = vertices.length;
+        vertices.push([poolACenterX, poolACenterY, 0]);
+        for (let i = 0; i < radialRes; i++) {
+            const i1 = (i + 1) % radialRes;
+            faces.push([aCenterBottom, baseIdx + i1, baseIdx + i]);
+        }
+
+        // Pool B
+        const baseBIdx = vertices.length;
+        for (const p of ptsB) vertices.push([p[0], p[1], 0]);
+        for (const p of ptsB) vertices.push([p[0], p[1], depth]);
+
+        // Pool B side walls
+        for (let i = 0; i < radialRes; i++) {
+            const i1 = (i + 1) % radialRes;
+            const b0 = baseBIdx + i, b1 = baseBIdx + i1;
+            const t0 = baseBIdx + radialRes + i, t1 = baseBIdx + radialRes + i1;
+            faces.push([b0, b1, t1]);
+            faces.push([b0, t1, t0]);
+        }
+
+        // Pool B bottom cap
+        const bCenterBottom = vertices.length;
+        vertices.push([poolBCenterX, poolBCenterY, 0]);
+        for (let i = 0; i < radialRes; i++) {
+            const i1 = (i + 1) % radialRes;
+            faces.push([bCenterBottom, baseBIdx + i1, baseBIdx + i]);
+        }
+
+        // Build OBJ string
+        let obj = "# AcousticFDTD - Figure-8 Pool\n";
+        obj += "# Pool A center: " + poolACenterX + ", " + poolACenterY + "\n";
+        obj += "# Pool B center: " + poolBCenterX + ", " + poolBCenterY + "\n";
+        obj += "o Figure8Pool\n";
+
+        for (const v of vertices) {
+            obj += "v " + v[0].toFixed(6) + " " + v[1].toFixed(6) + " " + v[2].toFixed(6) + "\n";
+        }
+        for (const f of faces) {
+            obj += "f " + (f[0] + 1) + " " + (f[1] + 1) + " " + (f[2] + 1) + "\n";
+        }
+
+        // Source in pool A center, slightly below surface
+        const sourcePos = [poolACenterX, poolACenterY, depth * 0.5];
+
+        // Mic positions: far pool, narrows, near surface
+        const narrowsX = (poolACenterX + poolBCenterX) / 2;
+        const micPositions = [
+            { position: [poolBCenterX, poolBCenterY, depth * 0.5], label: "Far Pool (B)" },
+            { position: [narrowsX, poolACenterY, depth * 0.5], label: "Narrows" },
+            { position: [poolACenterX, poolACenterY, depth * 0.9], label: "Surface (A)" }
+        ];
+
+        return { obj, sourcePos, micPositions, mode: "cavity" };
     }
 }
 

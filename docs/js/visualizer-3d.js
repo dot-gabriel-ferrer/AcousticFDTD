@@ -289,7 +289,7 @@ class Visualizer3D {
         });
         this.sourceMeshes = [];
 
-        sources.forEach(source => {
+        sources.forEach((source, idx) => {
             // Source sphere
             const geometry = new THREE.SphereGeometry(0.04, 24, 24);
             const material = new THREE.MeshPhongMaterial({
@@ -325,6 +325,9 @@ class Visualizer3D {
             const srcLight = new THREE.PointLight(0xffaa00, 0.3, 1.5);
             mesh.add(srcLight);
 
+            mesh.userData.isSource = true;
+            mesh.userData.sourceIndex = idx;
+
             this.scene.add(mesh);
             this.sourceMeshes.push(mesh);
         });
@@ -343,7 +346,7 @@ class Visualizer3D {
         });
         this.microphoneMeshes = [];
 
-        microphones.forEach(mic => {
+        microphones.forEach((mic, idx) => {
             const group = new THREE.Group();
 
             // Body (cylinder)
@@ -394,6 +397,9 @@ class Visualizer3D {
                 mic.position[1]
             );
 
+            group.userData.isMicrophone = true;
+            group.userData.micIndex = idx;
+
             this.scene.add(group);
             this.microphoneMeshes.push(group);
         });
@@ -416,6 +422,8 @@ class Visualizer3D {
 
         const mesh = new THREE.Mesh(geometry, material);
         mesh.position.set(wall.position[0], wall.position[2], wall.position[1]);
+
+        mesh.userData.isWall = true;
 
         if (wall.rotation) {
             mesh.rotation.set(wall.rotation[0], wall.rotation[1], wall.rotation[2]);

@@ -48,6 +48,7 @@ class App {
 
         // Custom source waveform
         this.customWaveform = null;     // Float64Array for custom sources
+        this.sceneEditor = null;
 
         this._bindUI();
         this._initDefault();
@@ -201,6 +202,44 @@ class App {
 
         // Multi-mic
         this._bindMicControls();
+
+        // --- Guidance listeners ---
+        const guidanceInputs = ['dimX', 'dimY', 'dimZ', 'dres', 'simTime', 'srcFreq', 'medium'];
+        guidanceInputs.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('input', () => this._updateGuidance());
+                el.addEventListener('change', () => this._updateGuidance());
+            }
+        });
+
+        // --- Pause action bar buttons ---
+        const btnPartialListen = document.getElementById('btnPartialListen');
+        if (btnPartialListen) btnPartialListen.addEventListener('click', () => this.playAudio());
+        const btnPartialExport = document.getElementById('btnPartialExport');
+        if (btnPartialExport) btnPartialExport.addEventListener('click', () => this.exportWav());
+        const btnResumeSim = document.getElementById('btnResumeSim');
+        if (btnResumeSim) btnResumeSim.addEventListener('click', () => this.start());
+
+        // --- Edit mode button ---
+        const btnEditMode = document.getElementById('btnEditMode');
+        if (btnEditMode) {
+            btnEditMode.addEventListener('click', () => {
+                if (!this.sceneEditor && this.visualizer3D && typeof SceneEditor !== 'undefined') {
+                    this.sceneEditor = new SceneEditor(this.visualizer3D, this);
+                }
+                if (this.sceneEditor) {
+                    const enabled = this.sceneEditor.toggle();
+                    btnEditMode.classList.toggle('active', enabled);
+                }
+            });
+        }
+
+        // --- Fullscreen 3D ---
+        const btnFullscreen3D = document.getElementById('btnFullscreen3D');
+        if (btnFullscreen3D) {
+            btnFullscreen3D.addEventListener('click', () => this._toggleFullscreen3D());
+        }
     }
 
     _bindDimToggle() {
@@ -245,7 +284,7 @@ class App {
         // Show/hide frequency input (not needed for WAV/tone/chord/glottal)
         const freqGroup = this.inpSrcFreq ? this.inpSrcFreq.closest(".form-group") : null;
         if (freqGroup) {
-            freqGroup.style.display = (srcType === "wav" || srcType === "tone" || srcType === "chord" || srcType === "glottal") ? "none" : "";
+            freqGroup.style.display = (srcType === "wav" || srcType === "tone" || srcType === "chord" || srcType === "glottal" || srcType === "orca-click" || srcType === "orca-whistle") ? "none" : "";
         }
     }
 
@@ -361,6 +400,18 @@ class App {
                 }
                 break;
             }
+            case "orca-click": {
+                if (typeof ToneGenerator !== "undefined") {
+                    this.customWaveform = ToneGenerator.generateOrcaClick(0.05, solverRate, 1.0);
+                }
+                break;
+            }
+            case "orca-whistle": {
+                if (typeof ToneGenerator !== "undefined") {
+                    this.customWaveform = ToneGenerator.generateOrcaWhistle(simTime, solverRate, 1.0);
+                }
+                break;
+            }
         }
     }
 
@@ -432,6 +483,16 @@ class App {
         // Display info
         this._updateGeoInfo("Model: " + (modelInfo ? modelInfo.name : modelId) +
             " | " + parsed.vertices.length + " vertices, " + parsed.triangles.length + " triangles");
+
+        // Show resolution suggestion
+        this._showResSuggestion(modelId);
+
+        // Figure-8 pool: set water medium and orca source
+        if (modelId === "figure8-pool") {
+            this.inpMedium.value = "water";
+            this.inpSrcType.value = "orca-click";
+            this._updateSourceTypeControls();
+        }
     }
 
     _handleModelImport(event) {
@@ -516,6 +577,10 @@ class App {
     }
 
     _clearGeometry() {
+        // Hide resolution suggestion
+        const resSugg = document.getElementById('resSuggestion');
+        if (resSugg) resSugg.style.display = 'none';
+
         this.geometryMesh = null;
         this.geometryMask = null;
         if (this.geometryThreeGeo) {
@@ -772,6 +837,207 @@ class App {
             "high-order-fdtd": "O(4,2) | 13-pt | CFL: Sc <= 0.49"
         };
         info.textContent = algoInfo[this.algorithmId] || "";
+        this._updateGuidance();
+    }
+
+    // ----------------------------------------------------------------
+    // Validation & Guidance
+    // ----------------------------------------------------------------
+
+    _runValidation() {
+        if (typeof SimValidator === 'undefined') return true;
+
+        const mediumPresets = {
+            air: { c0: 343, rho: 1.225 }, water: { c0: 1493, rho: 997 }, saltwater: { c0: 1533, rho: 1027 }
+        };
+        const med = mediumPresets[this.inpMedium.value] || mediumPresets.air;
+        const dims = this._getDims();
+        const algoMap = {
+            'standard-fdtd': 'standard', 'compact-fdtd': 'compact',
+            'iwb-fdtd': 'iwb', 'dwm-rect': 'dwm', 'high-order-fdtd': 'high-order'
+        };
+
+        const config = {
+            dims: dims,
+            dres: parseFloat(this.inpDres.value),
+            c0: med.c0,
+            rho: med.rho,
+            boundary: this.inpBoundary.value,
+            wallReflection: parseFloat(this.inpWallRef.value),
+            srcFreq: parseFloat(this.inpSrcFreq.value),
+            srcType: this.inpSrcType.value,
+            srcPos: [parseFloat(this.inpSrcX.value), parseFloat(this.inpSrcY.value), parseFloat(this.inpSrcZ.value)],
+            mics: this.microphones,
+            simTime: parseFloat(this.inpSimTime.value),
+            algorithm: algoMap[this.algorithmId] || 'standard',
+            simDimension: this.simDimension,
+            geometryMesh: this.geometryMesh
+        };
+
+        const result = SimValidator.validate(config);
+        this._showValidation(result);
+        return result.errors.length === 0;
+    }
+
+    _showValidation(result) {
+        const panel = document.getElementById('validationPanel');
+        if (!panel) return;
+
+        const errDiv = document.getElementById('validationErrors');
+        const warnDiv = document.getElementById('validationWarnings');
+        const infoDiv = document.getElementById('validationInfo');
+
+        const makeMsg = (msg, type, icon) =>
+            '<div class="validation-msg ' + type + '"><span class="v-icon">' + icon + '</span><span>' + msg + '</span></div>';
+
+        if (errDiv) errDiv.innerHTML = result.errors.map(m => makeMsg(m, 'error', '\u26d4')).join('');
+        if (warnDiv) warnDiv.innerHTML = result.warnings.map(m => makeMsg(m, 'warning', '\u26a0\ufe0f')).join('');
+        if (infoDiv) infoDiv.innerHTML = result.info.map(m => makeMsg(m, 'info', '\u2139\ufe0f')).join('');
+
+        panel.style.display = (result.errors.length + result.warnings.length + result.info.length > 0) ? 'block' : 'none';
+    }
+
+    _updateGuidance() {
+        if (typeof ParamGuidance === 'undefined') return;
+
+        const mediumPresets = {
+            air: { c0: 343 }, water: { c0: 1493 }, saltwater: { c0: 1533 }
+        };
+        const c0 = (mediumPresets[this.inpMedium.value] || mediumPresets.air).c0;
+        const algoMap = {
+            'standard-fdtd': 'standard', 'compact-fdtd': 'compact',
+            'iwb-fdtd': 'iwb', 'dwm-rect': 'dwm', 'high-order-fdtd': 'high-order'
+        };
+
+        const params = {
+            dims: [parseFloat(this.inpDimX.value), parseFloat(this.inpDimY.value), parseFloat(this.inpDimZ.value)],
+            dres: parseFloat(this.inpDres.value),
+            c0: c0,
+            algorithm: algoMap[this.algorithmId] || 'standard',
+            simTime: parseFloat(this.inpSimTime.value),
+            srcFreq: parseFloat(this.inpSrcFreq.value),
+            simDimension: this.simDimension
+        };
+
+        const g = ParamGuidance.compute(params);
+
+        // Grid
+        const guidGrid = document.getElementById('guidGrid');
+        const guidGridVal = document.getElementById('guidGridVal');
+        if (guidGridVal) guidGridVal.textContent = g.grid.nx + '\u00d7' + g.grid.ny + '\u00d7' + g.grid.nz + ' (' + g.grid.totalNodes.toLocaleString() + ')';
+        if (guidGrid) guidGrid.dataset.status = g.grid.status;
+
+        // f_max
+        const guidFreq = document.getElementById('guidFreq');
+        const guidFreqVal = document.getElementById('guidFreqVal');
+        if (guidFreqVal) guidFreqVal.textContent = Math.floor(g.maxFreq) + ' Hz';
+        if (guidFreq) guidFreq.dataset.status = g.freqStatus;
+
+        // Memory
+        const guidMem = document.getElementById('guidMem');
+        const guidMemVal = document.getElementById('guidMemVal');
+        if (guidMemVal) guidMemVal.textContent = g.memory.mb < 1 ? '<1 MB' : g.memory.mb.toFixed(0) + ' MB';
+        if (guidMem) guidMem.dataset.status = g.memory.status;
+
+        // Est. Time
+        const guidTime = document.getElementById('guidTime');
+        const guidTimeVal = document.getElementById('guidTimeVal');
+        if (guidTimeVal) guidTimeVal.textContent = ParamGuidance.formatTime(g.time.seconds) + ' (' + g.time.steps.toLocaleString() + ' steps)';
+        if (guidTime) guidTime.dataset.status = g.time.status;
+
+        // CFL
+        const guidCFL = document.getElementById('guidCFL');
+        const guidCFLVal = document.getElementById('guidCFLVal');
+        if (guidCFLVal) guidCFLVal.textContent = g.cfl.stencil + ' sc\u2264' + g.cfl.scMax.toFixed(3) + ' ' + g.cfl.order;
+        if (guidCFL) guidCFL.dataset.status = 'green';
+
+        // Set tooltips
+        if (guidGridVal) guidGridVal.title = ParamGuidance.tooltip('dims');
+        if (guidFreqVal) guidFreqVal.title = ParamGuidance.tooltip('srcFreq');
+        if (guidMemVal) guidMemVal.title = 'Based on 9 Float64Arrays \u00d7 ' + g.grid.totalNodes.toLocaleString() + ' nodes';
+        if (guidTimeVal) guidTimeVal.title = ParamGuidance.tooltip('simTime');
+        if (guidCFLVal) guidCFLVal.title = ParamGuidance.tooltip('algorithm');
+    }
+
+    _showResSuggestion(modelId) {
+        const panel = document.getElementById('resSuggestion');
+        const body = document.getElementById('resSuggestionBody');
+        if (!panel || !body || typeof ExampleModels === 'undefined') return;
+
+        const models = ExampleModels.getModelList();
+        const model = models.find(m => m.id === modelId);
+        if (!model || !model.recommendedDres) {
+            panel.style.display = 'none';
+            return;
+        }
+
+        const recDres = model.recommendedDres;
+        const minDres = model.minDres;
+        const dims = model.suggestedRoom || this._getDims();
+
+        // Compute memory for each
+        const calcMem = (dr) => {
+            const nx = Math.floor(dims[0] / dr);
+            const ny = Math.floor(dims[1] / dr);
+            const nz = Math.floor(dims[2] / dr);
+            return (9 * nx * ny * nz * 8) / (1024 * 1024);
+        };
+        const recMem = calcMem(recDres);
+        const minMem = calcMem(minDres);
+
+        body.innerHTML =
+            '<div class="res-row"><span>Recommended</span><span class="res-val">' + recDres + ' m (' + recMem.toFixed(0) + ' MB)</span></div>' +
+            '<div class="res-row"><span>Minimum</span><span class="res-val">' + minDres + ' m (' + minMem.toFixed(0) + ' MB)</span></div>' +
+            (recMem > 500 ? '<div class="res-warn">\u26a0 Recommended resolution uses significant memory</div>' : '');
+
+        panel.style.display = 'block';
+
+        // Bind apply buttons
+        const btnRec = document.getElementById('btnApplyRecDres');
+        const btnMin = document.getElementById('btnApplyMinDres');
+        if (btnRec) {
+            btnRec.onclick = () => {
+                this.inpDres.value = recDres;
+                this._updateGuidance();
+            };
+        }
+        if (btnMin) {
+            btnMin.onclick = () => {
+                this.inpDres.value = minDres;
+                this._updateGuidance();
+            };
+        }
+    }
+
+    _toggleFullscreen3D() {
+        const vizPanel = document.querySelector('.viz-panel.full-width');
+        if (!vizPanel) return;
+
+        vizPanel.classList.toggle('fullscreen-3d');
+        const isFS = vizPanel.classList.contains('fullscreen-3d');
+
+        const btn = document.getElementById('btnFullscreen3D');
+        if (btn) btn.textContent = isFS ? '\u2716' : '\u26f6';
+
+        // Resize renderer
+        if (this.visualizer3D && this.visualizer3D.renderer) {
+            setTimeout(() => {
+                this.visualizer3D.onResize();
+            }, 100);
+        }
+
+        // ESC handler
+        if (isFS) {
+            this._fsEscHandler = (e) => {
+                if (e.key === 'Escape') {
+                    vizPanel.classList.remove('fullscreen-3d');
+                    if (btn) btn.textContent = '\u26f6';
+                    if (this.visualizer3D) setTimeout(() => this.visualizer3D.onResize(), 100);
+                    document.removeEventListener('keydown', this._fsEscHandler);
+                }
+            };
+            document.addEventListener('keydown', this._fsEscHandler);
+        }
     }
 
     // ----------------------------------------------------------------
@@ -800,9 +1066,11 @@ class App {
         this._updateAlgoInfo();
         this._renderMicList();
         this._renderFrame();
+        this._updateGuidance();
     }
 
     _createSolver() {
+      try {
         const mediumPresets = {
             air: { c0: 343, rho: 1.225 },
             water: { c0: 1493, rho: 997 },
@@ -857,7 +1125,7 @@ class App {
 
         // Determine source type and build source config
         const srcType = this.inpSrcType.value;
-        const isCustomSrc = (srcType === "wav" || srcType === "tone" || srcType === "chord" || srcType === "glottal");
+        const isCustomSrc = (srcType === "wav" || srcType === "tone" || srcType === "chord" || srcType === "glottal" || srcType === "orca-click" || srcType === "orca-whistle");
 
         const sourceConfig = {
             position: [
@@ -895,6 +1163,11 @@ class App {
 
         this._updateSliceMax();
         this._updateTripleSliceMax();
+        return true;
+      } catch (err) {
+        this.infoPanel.innerHTML = '<span style="color:var(--accent-red)">\u26d4 Solver creation failed: ' + err.message + '</span>';
+        return false;
+      }
     }
 
     _updateSliceMax() {
@@ -959,8 +1232,15 @@ class App {
     start() {
         if (this.running) return;
 
+        // Hide pause action bar
+        const pauseBar = document.getElementById('pauseActionBar');
+        if (pauseBar) pauseBar.style.display = 'none';
+
         if (this.solver.step === 0) {
-            this._createSolver();
+            // Run validation
+            if (!this._runValidation()) return;
+
+            if (this._createSolver() === false) return;
             if (this.visualizer) {
                 this.visualizer = new Visualizer(this.fieldCanvas, this.timeCanvas, this.fftCanvas);
             }
@@ -983,10 +1263,33 @@ class App {
             cancelAnimationFrame(this.animFrameId);
             this.animFrameId = null;
         }
+
+        // Show pause action bar
+        const pauseBar = document.getElementById('pauseActionBar');
+        if (pauseBar && this.solver && this.solver.step > 0) {
+            const pct = ((this.solver.step / this.maxSteps) * 100).toFixed(1);
+            const elapsed = (this.solver.step * this.solver.dt * 1000).toFixed(1);
+            const statusText = document.getElementById('pauseStatusText');
+            if (statusText) statusText.textContent = 'Paused at ' + pct + '% (' + elapsed + ' ms simulated)';
+            pauseBar.style.display = 'flex';
+            const btnListen = document.getElementById('btnPartialListen');
+            const btnExport = document.getElementById('btnPartialExport');
+            if (btnListen) btnListen.disabled = this.solver.receivers.length === 0;
+            if (btnExport) btnExport.disabled = this.solver.receivers.length === 0;
+        }
     }
 
     reset() {
         this.pause();
+
+        // Hide validation and pause panels
+        const validPanel = document.getElementById('validationPanel');
+        if (validPanel) validPanel.style.display = 'none';
+        const pauseBar = document.getElementById('pauseActionBar');
+        if (pauseBar) pauseBar.style.display = 'none';
+        const resSugg = document.getElementById('resSuggestion');
+        if (resSugg) resSugg.style.display = 'none';
+
         this._createSolver();
         this._update3DView();
         if (this.visualizer3D) {
@@ -1020,6 +1323,21 @@ class App {
                 return;
             }
             this.solver.calcStep();
+        }
+
+        // Periodic NaN/Infinity check
+        if (this.solver.step % 100 === 0 && this.solver.p) {
+            const pCur = this.solver.p[this.solver.n];
+            if (pCur) {
+                const checkLen = Math.min(pCur.length, 1000);
+                for (let i = 0; i < checkLen; i++) {
+                    if (!isFinite(pCur[i])) {
+                        this.pause();
+                        this.infoPanel.innerHTML = '<span style="color:var(--accent-red)">\u26d4 Simulation diverged (NaN/Infinity at step ' + this.solver.step + '). Try increasing dres or changing algorithm.</span>';
+                        return;
+                    }
+                }
+            }
         }
 
         this._renderFrame();
@@ -1158,6 +1476,10 @@ class App {
     // ----------------------------------------------------------------
 
     _finish() {
+        // Hide pause action bar
+        const pauseBar = document.getElementById('pauseActionBar');
+        if (pauseBar) pauseBar.style.display = 'none';
+
         this.running = false;
         this.btnStart.disabled = false;
         this.btnPause.disabled = true;
