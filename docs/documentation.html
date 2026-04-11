@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AcousticFDTD -- Technical Documentation</title>
+    <title>AcousticFDTD -- Documentation</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
     <style>
         /* ======================================================
-           PAPER STYLES -- Professional Academic Layout
+           PAPER STYLES -- Academic Layout
            ====================================================== */
         body {
             background: #ffffff;
@@ -20,9 +20,9 @@
         }
 
         .paper-container {
-            max-width: 860px;
+            max-width: 1100px;
             margin: 0 auto;
-            padding: 3rem 2.5rem 4rem;
+            padding: 3rem 3.5rem 4rem;
             background: #ffffff;
             font-family: 'Crimson Pro', 'Georgia', serif;
             font-size: 1.1rem;
@@ -126,10 +126,14 @@
 
         /* -- Equations --
            MathJax handles centering and \tag{} numbering.
-           We only provide vertical spacing. */
+           We only provide vertical spacing and overflow handling. */
         .mjx-chtml { margin: 0.4rem 0 !important; }
         mjx-container[jax="CHTML"][display="true"] {
             margin: 1.2rem 0 !important;
+            overflow-x: auto;
+            overflow-y: hidden;
+            max-width: 100%;
+            padding: 0.3rem 0;
         }
 
         /* -- Code -- */
@@ -190,14 +194,20 @@
 
         /* -- Figures -- */
         .figure {
-            margin: 2rem auto;
+            margin: 2.5rem auto;
             text-align: center;
+            max-width: 90%;
+        }
+        .figure svg {
+            max-width: 100%;
+            height: auto;
         }
         .figure-caption {
             font-size: 0.92rem;
             color: #555;
-            margin-top: 0.5rem;
+            margin-top: 0.8rem;
             font-style: italic;
+            line-height: 1.5;
         }
 
         /* -- Note boxes -- */
@@ -281,7 +291,7 @@
         /* -- Print -- */
         @media print {
             .nav-header { display: none; }
-            .paper-container { max-width: 100%; padding: 1.5cm; }
+            .paper-container { max-width: 100%; padding: 1.5cm 2cm; }
             h1 { page-break-before: always; }
             h1:first-of-type { page-break-before: avoid; }
             table { page-break-inside: avoid; }
@@ -290,6 +300,9 @@
         }
 
         /* -- Responsive -- */
+        @media (max-width: 1200px) {
+            .paper-container { max-width: 95%; padding: 2rem 2rem; }
+        }
         @media (max-width: 900px) {
             .paper-container { padding: 1.5rem 1rem; }
             .paper-title { font-size: 1.5rem; }
@@ -319,7 +332,7 @@
 <body>
 
 <div class="nav-header">
-    <div><strong>AcousticFDTD</strong> -- Technical Documentation</div>
+    <div><strong>AcousticFDTD</strong> -- Documentation</div>
     <div>
         <a href="index.html">Home</a>
         <a href="simulator.html">Simulator</a>
@@ -477,6 +490,15 @@
             </ol>
         </li>
         <li><a href="#sec14">Conclusion and Future Work</a></li>
+        <li><a href="#sec15">Python API Reference</a>
+            <ol>
+                <li><a href="#sec15-1">Installation</a></li>
+                <li><a href="#sec15-2">Quick Start</a></li>
+                <li><a href="#sec15-3">Module Reference</a></li>
+                <li><a href="#sec15-4">Configuration via XML</a></li>
+                <li><a href="#sec15-5">Examples</a></li>
+            </ol>
+        </li>
     </ol>
 </div>
 
@@ -542,6 +564,53 @@
     <li>Validation against analytical solutions for rectangular room modes.</li>
     <li>Applications to room acoustics, underwater acoustics, and bioacoustic modeling.</li>
 </ol>
+
+<div class="figure">
+    <svg viewBox="0 0 620 340" xmlns="http://www.w3.org/2000/svg" style="max-width:560px">
+      <!-- Room box (3D illusion) -->
+      <rect x="80" y="60" width="340" height="220" fill="#f0f6ff" stroke="#3b6ea5" stroke-width="1.5"/>
+      <polygon points="80,60 160,20 500,20 420,60" fill="#dce8f5" stroke="#3b6ea5" stroke-width="1.5"/>
+      <polygon points="420,60 500,20 500,240 420,280" fill="#e5eef8" stroke="#3b6ea5" stroke-width="1.5"/>
+      <!-- Dimension labels -->
+      <text x="240" y="16" font-family="Inter,sans-serif" font-size="13" fill="#333" text-anchor="middle">L<tspan font-size="9" dy="3">x</tspan></text>
+      <text x="520" y="140" font-family="Inter,sans-serif" font-size="13" fill="#333" text-anchor="start">L<tspan font-size="9" dy="3">z</tspan></text>
+      <text x="62" y="180" font-family="Inter,sans-serif" font-size="13" fill="#333" text-anchor="end">L<tspan font-size="9" dy="3">y</tspan></text>
+      <!-- Grid lines (sparse) -->
+      <line x1="148" y1="60" x2="148" y2="280" stroke="#3b6ea5" stroke-width="0.4" stroke-dasharray="4,4"/>
+      <line x1="216" y1="60" x2="216" y2="280" stroke="#3b6ea5" stroke-width="0.4" stroke-dasharray="4,4"/>
+      <line x1="284" y1="60" x2="284" y2="280" stroke="#3b6ea5" stroke-width="0.4" stroke-dasharray="4,4"/>
+      <line x1="352" y1="60" x2="352" y2="280" stroke="#3b6ea5" stroke-width="0.4" stroke-dasharray="4,4"/>
+      <line x1="80" y1="115" x2="420" y2="115" stroke="#3b6ea5" stroke-width="0.4" stroke-dasharray="4,4"/>
+      <line x1="80" y1="170" x2="420" y2="170" stroke="#3b6ea5" stroke-width="0.4" stroke-dasharray="4,4"/>
+      <line x1="80" y1="225" x2="420" y2="225" stroke="#3b6ea5" stroke-width="0.4" stroke-dasharray="4,4"/>
+      <!-- Source marker -->
+      <circle cx="240" cy="170" r="12" fill="#e63946" fill-opacity="0.2" stroke="#e63946" stroke-width="1.5"/>
+      <circle cx="240" cy="170" r="4" fill="#e63946"/>
+      <!-- Wave rings -->
+      <circle cx="240" cy="170" r="28" fill="none" stroke="#e63946" stroke-width="0.8" stroke-opacity="0.4"/>
+      <circle cx="240" cy="170" r="48" fill="none" stroke="#e63946" stroke-width="0.5" stroke-opacity="0.25"/>
+      <!-- Receiver marker -->
+      <rect x="335" y="228" width="10" height="14" rx="2" fill="#2a9d8f" stroke="#2a9d8f" stroke-width="1"/>
+      <line x1="340" y1="228" x2="340" y2="218" stroke="#2a9d8f" stroke-width="1.5"/>
+      <circle cx="340" cy="215" r="3" fill="none" stroke="#2a9d8f" stroke-width="1"/>
+      <!-- Legend -->
+      <circle cx="470" cy="100" r="5" fill="#e63946"/>
+      <text x="482" y="105" font-family="Inter,sans-serif" font-size="12" fill="#333">Source</text>
+      <rect x="466" y="127" width="8" height="12" rx="1.5" fill="#2a9d8f"/>
+      <text x="482" y="138" font-family="Inter,sans-serif" font-size="12" fill="#333">Receiver</text>
+      <line x1="466" y1="162" x2="478" y2="162" stroke="#3b6ea5" stroke-width="0.6" stroke-dasharray="4,4"/>
+      <text x="482" y="167" font-family="Inter,sans-serif" font-size="12" fill="#333">Grid</text>
+      <!-- Axes -->
+      <line x1="80" y1="300" x2="130" y2="300" stroke="#333" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+      <text x="132" y="304" font-family="Inter,sans-serif" font-size="11" fill="#333">x</text>
+      <line x1="80" y1="300" x2="80" y2="250" stroke="#333" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+      <text x="72" y="248" font-family="Inter,sans-serif" font-size="11" fill="#333">y</text>
+      <line x1="80" y1="300" x2="110" y2="278" stroke="#333" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+      <text x="112" y="278" font-family="Inter,sans-serif" font-size="11" fill="#333">z</text>
+      <defs><marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#333"/></marker></defs>
+    </svg>
+    <div class="figure-caption">Figure 1. Simulation domain: rectangular room of dimensions L<sub>x</sub> x L<sub>y</sub> x L<sub>z</sub> discretized on a uniform Cartesian grid with spacing Delta x. The source (red) radiates spherical wavefronts; the receiver (green) records the pressure time series.</div>
+</div>
 
 
 <!-- ============================================================ -->
@@ -664,6 +733,89 @@ $$p^{\,n+1}_{i,j,k} = p^{\,n}_{i,j,k} - \frac{\rho_0\,c_0^2\,\Delta t}{\Delta x}
     <strong>Note:</strong> Defining the Courant number as \(S_c = c_0\,\Delta t / \Delta x\),
     the update can be written concisely using the dimensionless ratio
     \(\alpha = 2\,S_c / c_0\) for velocities and the product \(\rho_0\,c_0\,S_c\) for pressure.
+</div>
+
+<div class="figure">
+    <svg viewBox="0 0 700 260" xmlns="http://www.w3.org/2000/svg" style="max-width:640px">
+      <!-- Standard 7-point stencil (left) -->
+      <text x="140" y="20" font-family="Inter,sans-serif" font-size="13" font-weight="600" fill="#0077b6" text-anchor="middle">Standard (7-point)</text>
+      <!-- Center node -->
+      <circle cx="140" cy="135" r="7" fill="#0077b6"/>
+      <!-- Face neighbours -->
+      <circle cx="70" cy="135" r="5" fill="#e63946"/>
+      <circle cx="210" cy="135" r="5" fill="#e63946"/>
+      <circle cx="140" cy="65" r="5" fill="#e63946"/>
+      <circle cx="140" cy="205" r="5" fill="#e63946"/>
+      <circle cx="105" cy="100" r="5" fill="#e63946"/>
+      <circle cx="175" cy="170" r="5" fill="#e63946"/>
+      <!-- Connections -->
+      <line x1="77" y1="135" x2="133" y2="135" stroke="#555" stroke-width="1"/>
+      <line x1="147" y1="135" x2="203" y2="135" stroke="#555" stroke-width="1"/>
+      <line x1="140" y1="72" x2="140" y2="128" stroke="#555" stroke-width="1"/>
+      <line x1="140" y1="142" x2="140" y2="198" stroke="#555" stroke-width="1"/>
+      <line x1="110" y1="105" x2="135" y2="130" stroke="#555" stroke-width="1"/>
+      <line x1="145" y1="140" x2="170" y2="165" stroke="#555" stroke-width="1"/>
+      <!-- Axis labels -->
+      <text x="218" y="130" font-family="Inter,sans-serif" font-size="10" fill="#555">+x</text>
+      <text x="50" y="130" font-family="Inter,sans-serif" font-size="10" fill="#555">-x</text>
+      <text x="146" y="58" font-family="Inter,sans-serif" font-size="10" fill="#555">+y</text>
+      <text x="146" y="218" font-family="Inter,sans-serif" font-size="10" fill="#555">-y</text>
+      <text x="178" y="184" font-family="Inter,sans-serif" font-size="10" fill="#555">+z</text>
+
+      <!-- Divider -->
+      <line x1="310" y1="30" x2="310" y2="240" stroke="#ddd" stroke-width="1"/>
+
+      <!-- Compact 27-point stencil (right) -->
+      <text x="500" y="20" font-family="Inter,sans-serif" font-size="13" font-weight="600" fill="#0077b6" text-anchor="middle">Compact KW (27-point)</text>
+      <!-- Center -->
+      <circle cx="500" cy="135" r="7" fill="#0077b6"/>
+      <!-- 6 face neighbours (lambda_1) -->
+      <circle cx="430" cy="135" r="5" fill="#e63946"/>
+      <circle cx="570" cy="135" r="5" fill="#e63946"/>
+      <circle cx="500" cy="65" r="5" fill="#e63946"/>
+      <circle cx="500" cy="205" r="5" fill="#e63946"/>
+      <circle cx="465" cy="100" r="5" fill="#e63946"/>
+      <circle cx="535" cy="170" r="5" fill="#e63946"/>
+      <!-- 12 edge neighbours (lambda_2) -->
+      <circle cx="430" cy="65" r="4" fill="#f4a261"/>
+      <circle cx="570" cy="65" r="4" fill="#f4a261"/>
+      <circle cx="430" cy="205" r="4" fill="#f4a261"/>
+      <circle cx="570" cy="205" r="4" fill="#f4a261"/>
+      <circle cx="395" cy="100" r="4" fill="#f4a261"/>
+      <circle cx="605" cy="100" r="4" fill="#f4a261"/>
+      <circle cx="395" cy="170" r="4" fill="#f4a261"/>
+      <circle cx="605" cy="170" r="4" fill="#f4a261"/>
+      <circle cx="465" cy="30" r="4" fill="#f4a261"/>
+      <circle cx="535" cy="30" r="4" fill="#f4a261"/>
+      <circle cx="465" cy="240" r="4" fill="#f4a261"/>
+      <circle cx="535" cy="240" r="4" fill="#f4a261"/>
+      <!-- 8 corner neighbours (lambda_3) -->
+      <circle cx="395" cy="30" r="3.5" fill="#2a9d8f"/>
+      <circle cx="605" cy="30" r="3.5" fill="#2a9d8f"/>
+      <circle cx="395" cy="240" r="3.5" fill="#2a9d8f"/>
+      <circle cx="605" cy="240" r="3.5" fill="#2a9d8f"/>
+      <circle cx="432" cy="62" r="3.5" fill="#2a9d8f" fill-opacity="0"/>
+      <circle cx="568" cy="62" r="3.5" fill="#2a9d8f" fill-opacity="0"/>
+      <circle cx="432" cy="208" r="3.5" fill="#2a9d8f" fill-opacity="0"/>
+      <circle cx="568" cy="208" r="3.5" fill="#2a9d8f" fill-opacity="0"/>
+      <!-- Connections (face only for clarity) -->
+      <line x1="437" y1="135" x2="493" y2="135" stroke="#555" stroke-width="0.8"/>
+      <line x1="507" y1="135" x2="563" y2="135" stroke="#555" stroke-width="0.8"/>
+      <line x1="500" y1="72" x2="500" y2="128" stroke="#555" stroke-width="0.8"/>
+      <line x1="500" y1="142" x2="500" y2="198" stroke="#555" stroke-width="0.8"/>
+      <line x1="470" y1="105" x2="495" y2="130" stroke="#555" stroke-width="0.8"/>
+      <line x1="505" y1="140" x2="530" y2="165" stroke="#555" stroke-width="0.8"/>
+      <!-- Legend -->
+      <circle cx="360" cy="252" r="5" fill="#e63946"/>
+      <text x="370" y="256" font-family="Inter,sans-serif" font-size="10" fill="#555">Face (6)</text>
+      <circle cx="440" cy="252" r="4" fill="#f4a261"/>
+      <text x="449" y="256" font-family="Inter,sans-serif" font-size="10" fill="#555">Edge (12)</text>
+      <circle cx="530" cy="252" r="3.5" fill="#2a9d8f"/>
+      <text x="538" y="256" font-family="Inter,sans-serif" font-size="10" fill="#555">Corner (8)</text>
+      <circle cx="620" cy="252" r="5" fill="#0077b6"/>
+      <text x="630" y="256" font-family="Inter,sans-serif" font-size="10" fill="#555">Center</text>
+    </svg>
+    <div class="figure-caption">Figure 2. Comparison of spatial stencils. Left: the standard 7-point stencil uses only the 6 face neighbours. Right: the compact Kowalczyk--van Walstijn scheme uses all 26 neighbours (6 face + 12 edge + 8 corner), achieving isotropic dispersion at S<sub>c</sub> = 1.</div>
 </div>
 
 
@@ -1006,6 +1158,62 @@ $$\left(\frac{\sin\!\bigl(\omega\,\Delta t/2\bigr)}{\Delta t}\right)^{\!2} = \fr
     [9].
 </p>
 
+<div class="figure">
+    <svg viewBox="0 0 640 340" xmlns="http://www.w3.org/2000/svg" style="max-width:580px">
+      <!-- Axes -->
+      <line x1="80" y1="280" x2="580" y2="280" stroke="#333" stroke-width="1.2"/>
+      <line x1="80" y1="280" x2="80" y2="30" stroke="#333" stroke-width="1.2"/>
+      <!-- Y axis label -->
+      <text x="28" y="155" font-family="Inter,sans-serif" font-size="12" fill="#333" text-anchor="middle" transform="rotate(-90,28,155)">Max. phase velocity error [%]</text>
+      <!-- X axis label -->
+      <text x="330" y="320" font-family="Inter,sans-serif" font-size="12" fill="#333" text-anchor="middle">Frequency / Nyquist</text>
+      <!-- Y grid + labels -->
+      <line x1="80" y1="230" x2="580" y2="230" stroke="#e8e8e8" stroke-width="0.8"/>
+      <text x="72" y="234" font-family="Inter,sans-serif" font-size="10" fill="#888" text-anchor="end">1.0</text>
+      <line x1="80" y1="180" x2="580" y2="180" stroke="#e8e8e8" stroke-width="0.8"/>
+      <text x="72" y="184" font-family="Inter,sans-serif" font-size="10" fill="#888" text-anchor="end">2.0</text>
+      <line x1="80" y1="130" x2="580" y2="130" stroke="#e8e8e8" stroke-width="0.8"/>
+      <text x="72" y="134" font-family="Inter,sans-serif" font-size="10" fill="#888" text-anchor="end">3.0</text>
+      <line x1="80" y1="80" x2="580" y2="80" stroke="#e8e8e8" stroke-width="0.8"/>
+      <text x="72" y="84" font-family="Inter,sans-serif" font-size="10" fill="#888" text-anchor="end">4.0</text>
+      <text x="72" y="284" font-family="Inter,sans-serif" font-size="10" fill="#888" text-anchor="end">0</text>
+      <!-- X grid + labels -->
+      <line x1="180" y1="280" x2="180" y2="30" stroke="#e8e8e8" stroke-width="0.8"/>
+      <text x="180" y="296" font-family="Inter,sans-serif" font-size="10" fill="#888" text-anchor="middle">0.1</text>
+      <line x1="280" y1="280" x2="280" y2="30" stroke="#e8e8e8" stroke-width="0.8"/>
+      <text x="280" y="296" font-family="Inter,sans-serif" font-size="10" fill="#888" text-anchor="middle">0.2</text>
+      <line x1="380" y1="280" x2="380" y2="30" stroke="#e8e8e8" stroke-width="0.8"/>
+      <text x="380" y="296" font-family="Inter,sans-serif" font-size="10" fill="#888" text-anchor="middle">0.3</text>
+      <line x1="480" y1="280" x2="480" y2="30" stroke="#e8e8e8" stroke-width="0.8"/>
+      <text x="480" y="296" font-family="Inter,sans-serif" font-size="10" fill="#888" text-anchor="middle">0.4</text>
+      <line x1="580" y1="280" x2="580" y2="30" stroke="#e8e8e8" stroke-width="0.8"/>
+      <text x="580" y="296" font-family="Inter,sans-serif" font-size="10" fill="#888" text-anchor="middle">0.5</text>
+      <!-- Standard FDTD (red) -->
+      <polyline points="80,280 180,278.5 280,240 380,220 480,105 580,105" fill="none" stroke="#e63946" stroke-width="2"/>
+      <!-- Compact KW (blue) -->
+      <polyline points="80,280 180,279.5 280,275 380,270 480,220 580,220" fill="none" stroke="#0077b6" stroke-width="2"/>
+      <!-- IWB (green) -->
+      <polyline points="80,280 180,279.8 280,279 380,278 480,255 580,255" fill="none" stroke="#2a9d8f" stroke-width="2"/>
+      <!-- DWM (orange, dashed - same as standard) -->
+      <polyline points="80,280 180,278.5 280,240 380,220 480,105 580,105" fill="none" stroke="#f4a261" stroke-width="1.5" stroke-dasharray="6,4"/>
+      <!-- High-Order (purple) -->
+      <polyline points="80,280 180,279.9 280,279.5 380,279 480,265 580,265" fill="none" stroke="#7b2d8e" stroke-width="2"/>
+      <!-- Legend -->
+      <rect x="130" y="40" width="190" height="105" rx="4" fill="white" stroke="#ddd" stroke-width="0.8"/>
+      <line x1="140" y1="55" x2="162" y2="55" stroke="#e63946" stroke-width="2"/>
+      <text x="168" y="59" font-family="Inter,sans-serif" font-size="10" fill="#333">Standard FDTD</text>
+      <line x1="140" y1="73" x2="162" y2="73" stroke="#0077b6" stroke-width="2"/>
+      <text x="168" y="77" font-family="Inter,sans-serif" font-size="10" fill="#333">Compact KW</text>
+      <line x1="140" y1="91" x2="162" y2="91" stroke="#2a9d8f" stroke-width="2"/>
+      <text x="168" y="95" font-family="Inter,sans-serif" font-size="10" fill="#333">IWB</text>
+      <line x1="140" y1="109" x2="162" y2="109" stroke="#f4a261" stroke-width="1.5" stroke-dasharray="6,4"/>
+      <text x="168" y="113" font-family="Inter,sans-serif" font-size="10" fill="#333">DWM (= Std FDTD)</text>
+      <line x1="140" y1="127" x2="162" y2="127" stroke="#7b2d8e" stroke-width="2"/>
+      <text x="168" y="131" font-family="Inter,sans-serif" font-size="10" fill="#333">High-Order O(4,2)</text>
+    </svg>
+    <div class="figure-caption">Figure 3. Maximum phase velocity error as a function of frequency (normalized to Nyquist) for the five numerical schemes. The standard FDTD and DWM have identical dispersion. The IWB and high-order schemes maintain errors below 0.5% up to 0.5 Nyquist.</div>
+</div>
+
 
 <!-- ============================================================ -->
 <!-- SECTION 6: BOUNDARY CONDITIONS -->
@@ -1243,6 +1451,58 @@ $$\text{EDC}(t) = \int_t^{\infty} h^2(\tau)\;\mathrm{d}\tau \tag{37}\label{eq:ed
 </p>
 
 $$L_{\text{EDC}}(t) = 10\;\log_{10}\!\!\left(\frac{\text{EDC}(t)}{\text{EDC}(0)}\right) \tag{38}\label{eq:edc-db}$$
+
+<div class="figure">
+    <svg viewBox="0 0 620 310" xmlns="http://www.w3.org/2000/svg" style="max-width:560px">
+      <!-- Axes -->
+      <line x1="70" y1="260" x2="570" y2="260" stroke="#333" stroke-width="1.2"/>
+      <line x1="70" y1="260" x2="70" y2="20" stroke="#333" stroke-width="1.2"/>
+      <!-- Y axis label -->
+      <text x="20" y="140" font-family="Inter,sans-serif" font-size="12" fill="#333" text-anchor="middle" transform="rotate(-90,20,140)">Level [dB]</text>
+      <!-- X axis label -->
+      <text x="320" y="295" font-family="Inter,sans-serif" font-size="12" fill="#333" text-anchor="middle">Time [s]</text>
+      <!-- Y ticks -->
+      <text x="62" y="264" font-family="Inter,sans-serif" font-size="9" fill="#888" text-anchor="end">0</text>
+      <line x1="65" y1="220" x2="570" y2="220" stroke="#eee" stroke-width="0.6"/>
+      <text x="62" y="224" font-family="Inter,sans-serif" font-size="9" fill="#888" text-anchor="end">-10</text>
+      <line x1="65" y1="180" x2="570" y2="180" stroke="#eee" stroke-width="0.6"/>
+      <text x="62" y="184" font-family="Inter,sans-serif" font-size="9" fill="#888" text-anchor="end">-20</text>
+      <line x1="65" y1="140" x2="570" y2="140" stroke="#eee" stroke-width="0.6"/>
+      <text x="62" y="144" font-family="Inter,sans-serif" font-size="9" fill="#888" text-anchor="end">-30</text>
+      <line x1="65" y1="100" x2="570" y2="100" stroke="#eee" stroke-width="0.6"/>
+      <text x="62" y="104" font-family="Inter,sans-serif" font-size="9" fill="#888" text-anchor="end">-40</text>
+      <line x1="65" y1="60" x2="570" y2="60" stroke="#eee" stroke-width="0.6"/>
+      <text x="62" y="64" font-family="Inter,sans-serif" font-size="9" fill="#888" text-anchor="end">-50</text>
+      <text x="62" y="24" font-family="Inter,sans-serif" font-size="9" fill="#888" text-anchor="end">-60</text>
+      <!-- EDC curve (exponential decay) -->
+      <polyline points="70,260 90,254 110,247 140,236 170,224 200,212 240,196 280,180 320,164 360,148 400,132 440,116 480,100 520,84 560,68" fill="none" stroke="#0077b6" stroke-width="2.5"/>
+      <!-- T60 marker -->
+      <line x1="560" y1="20" x2="560" y2="260" stroke="#e63946" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="548" y="15" font-family="Inter,sans-serif" font-size="11" fill="#e63946" text-anchor="end" font-weight="600">T60</text>
+      <!-- EDT marker (first -10 dB range) -->
+      <rect x="70" y="220" width="100" height="40" fill="#2a9d8f" fill-opacity="0.1" stroke="#2a9d8f" stroke-width="1" stroke-dasharray="3,3"/>
+      <text x="120" y="212" font-family="Inter,sans-serif" font-size="10" fill="#2a9d8f" text-anchor="middle" font-weight="600">EDT</text>
+      <!-- -5 to -25 dB range (T20) -->
+      <line x1="70" y1="240" x2="570" y2="240" stroke="#f4a261" stroke-width="0.6" stroke-dasharray="2,3"/>
+      <line x1="70" y1="180" x2="570" y2="180" stroke="#f4a261" stroke-width="0.6" stroke-dasharray="2,3"/>
+      <text x="575" y="243" font-family="Inter,sans-serif" font-size="9" fill="#f4a261">-5 dB</text>
+      <text x="575" y="183" font-family="Inter,sans-serif" font-size="9" fill="#f4a261">-25 dB</text>
+      <!-- C80 marker at 80 ms equivalent position -->
+      <line x1="130" y1="260" x2="130" y2="242" stroke="#7b2d8e" stroke-width="1.2"/>
+      <text x="132" y="276" font-family="Inter,sans-serif" font-size="9" fill="#7b2d8e">80 ms</text>
+      <!-- Legend -->
+      <rect x="350" y="28" width="160" height="74" rx="4" fill="white" stroke="#ddd" stroke-width="0.8"/>
+      <line x1="360" y1="44" x2="382" y2="44" stroke="#0077b6" stroke-width="2.5"/>
+      <text x="388" y="48" font-family="Inter,sans-serif" font-size="10" fill="#333">EDC</text>
+      <rect x="360" y="57" width="20" height="8" fill="#2a9d8f" fill-opacity="0.15" stroke="#2a9d8f" stroke-width="0.8"/>
+      <text x="388" y="66" font-family="Inter,sans-serif" font-size="10" fill="#333">EDT range (0 to -10 dB)</text>
+      <line x1="360" y1="80" x2="382" y2="80" stroke="#f4a261" stroke-width="0.8" stroke-dasharray="2,3"/>
+      <text x="388" y="84" font-family="Inter,sans-serif" font-size="10" fill="#333">T20 range (-5 to -25 dB)</text>
+      <line x1="360" y1="94" x2="382" y2="94" stroke="#e63946" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="388" y="98" font-family="Inter,sans-serif" font-size="10" fill="#333">T60 (-60 dB)</text>
+    </svg>
+    <div class="figure-caption">Figure 4. Schematic energy decay curve (EDC) showing the derivation of acoustic parameters: EDT from the first 10 dB of decay, T20 from the -5 to -25 dB range (extrapolated to -60 dB), and C80 from the early/late energy split at 80 ms.</div>
+</div>
 
 
 <h2 id="sec9-2">9.2 Reverberation Time (RT60)</h2>
@@ -1957,6 +2217,265 @@ $$f_{m,n,p} = \frac{c_0}{2}\sqrt{\left(\frac{m}{L_x}\right)^{\!2} + \left(\frac{
 
 
 <!-- ============================================================ -->
+<!-- SECTION 15: PYTHON API REFERENCE -->
+<!-- ============================================================ -->
+<h1 id="sec15">15. Python API Reference</h1>
+
+<p>
+    The Python package (<code>fdtd/</code>) provides a local API for running acoustic simulations
+    without a browser. It implements the standard Yee FDTD scheme with NumPy and is suitable for
+    batch processing, parameter sweeps, and integration with other Python tools.
+</p>
+
+<h2 id="sec15-1">15.1 Installation</h2>
+
+<p>
+    Clone the repository and install the dependencies:
+</p>
+
+<div class="code-block">
+git clone https://github.com/dot-gabriel-ferrer/AcousticFDTD.git
+cd AcousticFDTD
+pip install numpy scipy matplotlib
+</div>
+
+<p>
+    No additional setup is required. The <code>fdtd</code> package can be imported directly
+    from the repository root.
+</p>
+
+
+<h2 id="sec15-2">15.2 Quick Start</h2>
+
+<p>
+    A minimal simulation requires four objects: a <code>Room</code>, a <code>Medium</code>,
+    at least one <code>Source</code>, and at least one <code>Microphone</code>. These are passed
+    to the <code>Sim</code> constructor, which builds the grid and prepares the solver.
+</p>
+
+<div class="code-block">
+from fdtd import Room, Medium, Source, Microphone, Sim
+
+# 1. Define geometry and medium
+room = Room(dims=[1.0, 1.0, 1.0], dres=0.05)   # 1 m cube, 5 cm cells
+medium = Medium(room, medium='air')              # air at 20 C
+
+# 2. Place source and receiver
+src = Source(frequency=500, coords_0=[0.5, 0.5, 0.5])
+mic = Microphone(coords=[0.2, 0.2, 0.2])
+
+# 3. Create simulation (0.01 s, reflective walls)
+sim = Sim(room, medium, [src], [mic], t=0.01, boundary='reflective')
+src.retone(sim.t, sim.dt)      # generate source signal
+sim.init_sources([src])         # inject into grid
+
+# 4. Run
+if sim.status == 0:
+    sim.run()
+    print(f"Recorded {len(mic.data)} samples at dt = {sim.dt:.2e} s")
+</div>
+
+<p>
+    After <code>sim.run()</code>, the microphone's time series is accessible as
+    <code>mic.data</code> (a Python list of pressure values). The solver fields
+    (<code>sim.p</code>, <code>sim.vx</code>, <code>sim.vy</code>, <code>sim.vz</code>)
+    hold the final state of the pressure and velocity arrays.
+</p>
+
+
+<h2 id="sec15-3">15.3 Module Reference</h2>
+
+<h3>Room</h3>
+<div class="code-block">
+Room(dims, dres)
+</div>
+<ul>
+    <li><code>dims</code> -- list of 3 floats: room dimensions [m] as <code>[Lx, Ly, Lz]</code>.</li>
+    <li><code>dres</code> -- float: spatial resolution (cell size) in metres.</li>
+    <li>Attributes: <code>room.nx</code>, <code>room.ny</code>, <code>room.nz</code> (integer grid sizes).</li>
+</ul>
+
+<h3>Medium</h3>
+<div class="code-block">
+Medium(room, medium='air')
+Medium(room, c0=1533, rho=1027)
+</div>
+<ul>
+    <li><code>medium</code> -- string preset: <code>'air'</code>, <code>'water'</code>, or <code>'saltwater'</code>.</li>
+    <li><code>c0</code>, <code>rho</code> -- custom speed of sound [m/s] and density [kg/m^3].</li>
+    <li>Attributes: <code>medium.c0</code>, <code>medium.rho</code>.</li>
+</ul>
+
+<h3>Source</h3>
+<div class="code-block">
+Source(frequency, coords_0, amplitude=1.0)
+</div>
+<ul>
+    <li><code>frequency</code> -- float: fundamental frequency [Hz]. Used by <code>retone()</code>.</li>
+    <li><code>coords_0</code> -- list of 3 floats: source position [m].</li>
+    <li><code>amplitude</code> -- float: source strength.</li>
+    <li>Methods:
+        <ul>
+            <li><code>retone(t, dt)</code> -- generate a sinusoidal signal of duration <code>t</code> with step <code>dt</code>.</li>
+            <li><code>d_dirac(dt)</code> -- replace signal with a Dirac delta (one-sample impulse).</li>
+            <li><code>d_gauss(dt)</code> -- replace signal with a Gaussian pulse.</li>
+        </ul>
+    </li>
+</ul>
+
+<h3>Microphone</h3>
+<div class="code-block">
+Microphone(coords)
+</div>
+<ul>
+    <li><code>coords</code> -- list of 3 floats: receiver position [m].</li>
+    <li>Attributes: <code>mic.data</code> (list of recorded pressure values after simulation).</li>
+</ul>
+
+<h3>Sim</h3>
+<div class="code-block">
+Sim(room, medium, sources, microphones, t=0.01, boundary='reflective')
+</div>
+<ul>
+    <li><code>room</code> -- <code>Room</code> instance.</li>
+    <li><code>medium</code> -- <code>Medium</code> instance.</li>
+    <li><code>sources</code> -- list of <code>Source</code> objects.</li>
+    <li><code>microphones</code> -- list of <code>Microphone</code> objects.</li>
+    <li><code>t</code> -- float: total simulation time [s].</li>
+    <li><code>boundary</code> -- string: <code>'reflective'</code>, <code>'absorbing'</code>, or <code>'periodic'</code>.</li>
+    <li>Key attributes:
+        <ul>
+            <li><code>sim.dt</code> -- time step [s] (computed from CFL condition).</li>
+            <li><code>sim.status</code> -- 0 = ready, nonzero = error (CFL violated, etc.).</li>
+            <li><code>sim.p</code> -- pressure array (3D NumPy array, last state).</li>
+        </ul>
+    </li>
+    <li>Methods: <code>init_sources(srcs)</code>, <code>run()</code>.</li>
+</ul>
+
+<h3>acoustic_param (post-processing)</h3>
+<div class="code-block">
+from fdtd.acoustic_param import spl, impedance, intensity, fft_signal
+</div>
+<ul>
+    <li><code>spl(pressure_data)</code> -- compute sound pressure level in dB SPL.</li>
+    <li><code>impedance(p, v)</code> -- specific acoustic impedance from pressure and velocity.</li>
+    <li><code>intensity(p, rho, c)</code> -- acoustic intensity [W/m^2].</li>
+    <li><code>fft_signal(data, dt)</code> -- compute FFT magnitude spectrum.</li>
+</ul>
+
+
+<h2 id="sec15-4">15.4 Configuration via XML</h2>
+
+<p>
+    Simulations can also be defined using XML configuration files, which is useful for
+    reproducible experiments and batch runs. The parser is in <code>fdtd/configr.py</code>.
+</p>
+
+<div class="code-block">
+&lt;?xml version="1.0"?&gt;
+&lt;simulation&gt;
+    &lt;room Lx="2.0" Ly="2.0" Lz="2.0" dres="0.05" /&gt;
+    &lt;medium type="air" /&gt;
+    &lt;source x="1.0" y="1.0" z="1.0" frequency="500" type="gaussian" /&gt;
+    &lt;microphone x="0.5" y="0.5" z="0.5" /&gt;
+    &lt;solver time="0.05" boundary="reflective" /&gt;
+&lt;/simulation&gt;
+</div>
+
+<p>
+    Load and run:
+</p>
+
+<div class="code-block">
+from fdtd.configr import Config
+
+cfg = Config("test_fdtd/config.xml")
+# cfg exposes room, medium, sources, microphones, and simulation objects
+</div>
+
+
+<h2 id="sec15-5">15.5 Examples</h2>
+
+<h3>Impulse response measurement</h3>
+<div class="code-block">
+import numpy as np
+import matplotlib.pyplot as plt
+from fdtd import Room, Medium, Source, Microphone, Sim
+
+room = Room(dims=[2, 2, 2], dres=0.1)
+medium = Medium(room, medium='air')
+src = Source(frequency=1000, coords_0=[1.0, 1.0, 1.0])
+mic = Microphone(coords=[0.5, 0.5, 0.5])
+
+sim = Sim(room, medium, [src], [mic], t=0.05, boundary='reflective')
+src.retone(sim.t, sim.dt)
+src.d_dirac(sim.dt)       # replace tone with impulse
+sim.init_sources([src])
+sim.run()
+
+# Plot impulse response
+t_axis = np.arange(len(mic.data)) * sim.dt
+plt.figure(figsize=(10, 3))
+plt.plot(t_axis * 1000, mic.data)
+plt.xlabel("Time [ms]")
+plt.ylabel("Pressure [Pa]")
+plt.title("Room impulse response")
+plt.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.show()
+</div>
+
+<h3>Frequency spectrum analysis</h3>
+<div class="code-block">
+from fdtd.acoustic_param import fft_signal
+
+freqs, magnitudes = fft_signal(mic.data, sim.dt)
+
+plt.figure(figsize=(10, 3))
+plt.plot(freqs, 20 * np.log10(magnitudes / max(magnitudes) + 1e-12))
+plt.xlim(0, 2000)
+plt.xlabel("Frequency [Hz]")
+plt.ylabel("Magnitude [dB]")
+plt.title("Frequency response")
+plt.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.show()
+</div>
+
+<h3>Underwater acoustics setup</h3>
+<div class="code-block">
+room = Room(dims=[5, 5, 3], dres=0.05)
+medium = Medium(room, c0=1533, rho=1027)   # seawater
+
+src = Source(frequency=2000, coords_0=[2.5, 2.5, 1.5])
+mic = Microphone(coords=[1.0, 1.0, 1.0])
+
+sim = Sim(room, medium, [src], [mic], t=0.02, boundary='absorbing')
+src.retone(sim.t, sim.dt)
+sim.init_sources([src])
+sim.run()
+</div>
+
+<h3>Multiple microphones</h3>
+<div class="code-block">
+mics = [
+    Microphone(coords=[0.2, 0.2, 0.2]),
+    Microphone(coords=[0.5, 0.5, 0.5]),
+    Microphone(coords=[0.8, 0.8, 0.8]),
+]
+
+sim = Sim(room, medium, [src], mics, t=0.01)
+src.retone(sim.t, sim.dt)
+sim.init_sources([src])
+sim.run()
+
+for i, m in enumerate(mics):
+    print(f"Mic {i}: {len(m.data)} samples, peak = {max(m.data):.4f} Pa")
+</div>
+
+
+<!-- ============================================================ -->
 <!-- REFERENCES -->
 <!-- ============================================================ -->
 <div class="references">
@@ -2221,11 +2740,11 @@ $$\Delta x \leq \frac{c_0}{f_{\max} \cdot \text{PPW}_{\min}} \tag{B1}\label{eq:p
 <!-- FOOTER -->
 <!-- ============================================================ -->
 <div class="paper-footer">
-    <p><strong>AcousticFDTD</strong> is open-source software licensed under the MIT License.</p>
+    <p><strong>AcousticFDTD</strong> -- open-source software for acoustic simulation, study, and experimentation. Licensed under the MIT License.</p>
     <p>
         <a href="index.html">Return to Home</a> --
         <a href="simulator.html">Launch Simulator</a> --
-        <a href="benchmark.html">Algorithm Benchmark</a> --
+        <a href="#sec15">Python API Reference</a> --
         <a href="https://github.com/dot-gabriel-ferrer/AcousticFDTD" target="_blank" rel="noopener">GitHub Repository</a>
     </p>
 </div>

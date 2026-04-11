@@ -1,14 +1,14 @@
-# AcousticFDTD — 3D Acoustic FDTD Simulator
+# AcousticFDTD -- 3D Acoustic FDTD Simulator
 
 [![GitHub Pages](https://img.shields.io/badge/demo-live-brightgreen)](https://dot-gabriel-ferrer.github.io/AcousticFDTD/)
 
-A professional 3D acoustic wave propagation simulator using the **Finite-Difference Time-Domain (FDTD)** method. Includes both a Python simulation engine and an interactive web-based demo.
+An open-source 3D acoustic wave propagation simulator based on the **Finite-Difference Time-Domain (FDTD)** method, designed for study and experimentation. Includes a Python simulation library and an interactive browser-based tool.
 
 ## Live Demo
 
-**[Launch Web Simulator](https://dot-gabriel-ferrer.github.io/AcousticFDTD/)**
+**[Launch Web Simulator](https://dot-gabriel-ferrer.github.io/AcousticFDTD/simulator.html)**
 
-The web version runs entirely in your browser with no installation required.
+The web version runs entirely in your browser -- no installation required.
 
 ## Features
 
@@ -38,7 +38,7 @@ pip install numpy scipy matplotlib
 ```python
 from fdtd import Room, Medium, Source, Microphone, Sim
 
-# Create a 1m × 1m × 1m room with 5cm resolution
+# Create a 1m x 1m x 1m room with 5cm resolution
 room = Room(dims=[1, 1, 1], dres=0.05)
 medium = Medium(room, medium='air')
 
@@ -79,7 +79,7 @@ sim.run()
 
 ```
 AcousticFDTD/
-├── fdtd/                    # Python simulation engine
+├── fdtd/                    # Python simulation library
 │   ├── __init__.py          # Package exports
 │   ├── sim.py               # Core FDTD solver
 │   ├── room.py              # Room/domain definition
@@ -87,7 +87,7 @@ AcousticFDTD/
 │   ├── source.py            # Sound sources
 │   ├── microphone.py        # Pressure receivers
 │   ├── counter.py           # Ping-pong buffer manager
-│   ├── acoustic_param.py    # Post-processing utilities
+│   ├── acoustic_param.py    # Post-processing (SPL, FFT, impedance)
 │   ├── configr.py           # XML config reader
 │   └── datafiles.py         # File I/O utilities
 ├── analitical/              # Analytical validation
@@ -96,11 +96,14 @@ AcousticFDTD/
 │   ├── config.xml           # XML test cases
 │   └── analysis.py          # Post-analysis script
 ├── docs/                    # Web application (GitHub Pages)
-│   ├── index.html           # Main web UI
-│   ├── css/style.css        # Styling
+│   ├── index.html           # Landing page
+│   ├── simulator.html       # Interactive 3D simulator
+│   ├── documentation.html   # Full documentation and API reference
+│   ├── css/style.css        # UI styles
 │   └── js/
-│       ├── fdtd-solver.js   # JavaScript FDTD engine
-│       ├── visualizer.js    # Canvas/WebGL visualization
+│       ├── fdtd-solver.js   # JavaScript FDTD engine (5 algorithms)
+│       ├── visualizer-3d.js # Three.js 3D visualization
+│       ├── visualizer.js    # Canvas 2D visualization
 │       ├── audio-engine.js  # Web Audio API integration
 │       └── app.js           # Application controller
 └── README.md
@@ -120,7 +123,9 @@ $$S_c = \frac{c_0 \Delta t}{\Delta x \sqrt{3}} \leq \frac{1}{\sqrt{3}}$$
 
 ## Author
 
-**Elías Gabriel Ferrer Jorge** — TFG Acoustic Simulations
+**Elias Gabriel Ferrer Jorge**
+
+Originally developed as a bachelor thesis (TFG) on FDTD-based acoustic parameter estimation at the Universidad de La Laguna, 2022.
 
 ## License
 
