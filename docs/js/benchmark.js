@@ -69,7 +69,8 @@ class BaseSolver {
             amplitude: src.amplitude || 1.0,
             type: src.type || "gaussian",
             injection: src.injection || "soft",
-            flatIdx: this.idx(ix, iy, iz)
+            flatIdx: this.idx(ix, iy, iz),
+            waveformData: src.waveformData || null
         });
     }
 
@@ -94,6 +95,12 @@ class BaseSolver {
                 const sigma = 1.0 / (2.0 * Math.PI * src.frequency);
                 const tc = 4.0 * sigma;
                 return src.amplitude * Math.exp(-((t - tc) ** 2) / (2 * sigma ** 2));
+            }
+            case "custom": {
+                if (src.waveformData && this.step < src.waveformData.length) {
+                    return src.amplitude * src.waveformData[this.step];
+                }
+                return 0;
             }
             case "sine":
             default:

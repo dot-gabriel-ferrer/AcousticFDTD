@@ -40,6 +40,15 @@ class App {
         }];
         this.nextMicId = 1;
 
+        // Geometry state
+        this.geometryMesh = null;       // { vertices, triangles } parsed mesh
+        this.geometryMask = null;       // Uint8Array voxel mask
+        this.geometryThreeGeo = null;   // THREE.BufferGeometry for rendering
+        this.activeModelId = "none";    // Currently loaded example model ID
+
+        // Custom source waveform
+        this.customWaveform = null;     // Float64Array for custom sources
+
         this._bindUI();
         this._initDefault();
     }
@@ -132,6 +141,46 @@ class App {
             });
         }
 
+        // Source type change — show/hide custom source controls
+        if (this.inpSrcType) {
+            this.inpSrcType.addEventListener("change", () => {
+                this._updateSourceTypeControls();
+            });
+        }
+
+        // Glottal F0 slider
+        const glottalF0 = document.getElementById("glottalF0");
+        if (glottalF0) {
+            glottalF0.addEventListener("input", () => {
+                const el = document.getElementById("glottalF0Val");
+                if (el) el.textContent = glottalF0.value;
+            });
+        }
+
+        // WAV file input
+        const wavInput = document.getElementById("wavFileInput");
+        if (wavInput) {
+            wavInput.addEventListener("change", (e) => this._handleWavImport(e));
+        }
+
+        // Geometry: example model selector
+        const exampleModel = document.getElementById("exampleModel");
+        if (exampleModel) {
+            exampleModel.addEventListener("change", () => this._handleExampleModel(exampleModel.value));
+        }
+
+        // Geometry: file import
+        const modelInput = document.getElementById("modelFileInput");
+        if (modelInput) {
+            modelInput.addEventListener("change", (e) => this._handleModelImport(e));
+        }
+
+        // Geometry: clear button
+        const btnClearGeo = document.getElementById("btnClearGeo");
+        if (btnClearGeo) {
+            btnClearGeo.addEventListener("click", () => this._clearGeometry());
+        }
+
         // Dimension toggle
         this._bindDimToggle();
 
@@ -166,6 +215,352 @@ class App {
                 this._updateDimInputs();
             });
         });
+    }
+
+    // ----------------------------------------------------------------
+    // Source Type Controls
+    // ----------------------------------------------------------------
+
+    _updateSourceTypeControls() {
+        const srcType = this.inpSrcType.value;
+        const controls = {
+            "wav": "wavControls",
+            "tone": "toneControls",
+            "chord": "chordControls",
+            "glottal": "glottalControls"
+        };
+
+        // Hide all custom controls
+        Object.values(controls).forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = "none";
+        });
+
+        // Show relevant controls
+        if (controls[srcType]) {
+            const el = document.getElementById(controls[srcType]);
+            if (el) el.style.display = "block";
+        }
+
+        // Show/hide frequency input (not needed for WAV/tone/chord/glottal)
+        const freqGroup = this.inpSrcFreq ? this.inpSrcFreq.closest(".form-group") : null;
+        if (freqGroup) {
+            freqGroup.style.display = (srcType === "wav" || srcType === "tone" || srcType === "chord" || srcType === "glottal") ? "none" : "";
+        }
+    }
+
+    // ----------------------------------------------------------------
+    // WAV File Import
+    // ----------------------------------------------------------------
+
+    _handleWavImport(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const result = WavLoader.parseWAV(e.target.result);
+                this._wavData = result;
+
+                // Display WAV info
+                const infoEl = document.getElementById("wavInfo");
+                if (infoEl) {
+                    infoEl.innerHTML =
+                        '<strong>' + file.name + '</strong><br>' +
+                        result.sampleRate + ' Hz · ' +
+                        result.bitDepth + '-bit · ' +
+                        result.channels + ' ch · ' +
+                        (result.data.length / result.sampleRate).toFixed(2) + ' s · ' +
+                        result.data.length + ' samples';
+                    infoEl.style.display = "block";
+                }
+            } catch (err) {
+                const infoEl = document.getElementById("wavInfo");
+                if (infoEl) {
+                    infoEl.innerHTML = '<span style="color: var(--danger)">Error: ' + err.message + '</span>';
+                    infoEl.style.display = "block";
+                }
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    /**
+     * Prepare custom waveform based on source type selection.
+     * Called before solver creation to generate the waveform data.
+     */
+    _prepareCustomWaveform() {
+        const srcType = this.inpSrcType.value;
+        this.customWaveform = null;
+
+        if (typeof ToneGenerator === "undefined" && typeof WavLoader === "undefined") return;
+
+        // Will use solver's sample rate after creation
+        const mediumPresets = {
+            air: { c0: 343 }, water: { c0: 1493 }, saltwater: { c0: 1533 }
+        };
+        const c0 = (mediumPresets[this.inpMedium.value] || mediumPresets.air).c0;
+        const dres = parseFloat(this.inpDres.value);
+        const sc = 0.5;
+        const dt = Math.sqrt(3) * sc * dres / c0;
+        const solverRate = 1.0 / dt;
+        const simTime = parseFloat(this.inpSimTime.value);
+
+        switch (srcType) {
+            case "wav": {
+                if (this._wavData && typeof WavLoader !== "undefined") {
+                    const resampled = WavLoader.resample(this._wavData.data, this._wavData.sampleRate, solverRate);
+                    WavLoader.normalize(resampled, 1.0);
+                    this.customWaveform = resampled;
+                }
+                break;
+            }
+            case "tone": {
+                if (typeof ToneGenerator !== "undefined") {
+                    const note = document.getElementById("toneNote")?.value || "A4";
+                    const waveform = document.getElementById("toneWaveform")?.value || "sine";
+                    this.customWaveform = ToneGenerator.generateTone({
+                        note: note,
+                        waveform: waveform,
+                        duration: simTime,
+                        sampleRate: solverRate,
+                        amplitude: 1.0,
+                        adsr: { attack: 0.005, decay: 0.02, sustain: 0.9, release: 0.01 }
+                    });
+                }
+                break;
+            }
+            case "chord": {
+                if (typeof ToneGenerator !== "undefined") {
+                    const chordMap = {
+                        "C-major": ["C4", "E4", "G4"],
+                        "A-minor": ["A3", "C4", "E4"],
+                        "G-major": ["G3", "B3", "D4"],
+                        "D-minor": ["D4", "F4", "A4"],
+                        "F-major": ["F3", "A3", "C4"]
+                    };
+                    const chordId = document.getElementById("chordPreset")?.value || "C-major";
+                    const notes = chordMap[chordId] || ["C4", "E4", "G4"];
+                    this.customWaveform = ToneGenerator.generateChord({
+                        notes: notes,
+                        waveform: "sine",
+                        duration: simTime,
+                        sampleRate: solverRate,
+                        amplitude: 1.0,
+                        adsr: { attack: 0.005, decay: 0.02, sustain: 0.9, release: 0.01 }
+                    });
+                }
+                break;
+            }
+            case "glottal": {
+                if (typeof ToneGenerator !== "undefined") {
+                    const f0 = parseInt(document.getElementById("glottalF0")?.value || "120");
+                    this.customWaveform = ToneGenerator.generateGlottalPulse(
+                        f0, simTime, solverRate, 1.0);
+                }
+                break;
+            }
+        }
+    }
+
+    // ----------------------------------------------------------------
+    // Geometry / 3D Model Management
+    // ----------------------------------------------------------------
+
+    _handleExampleModel(modelId) {
+        if (modelId === "none") {
+            this._clearGeometry();
+            return;
+        }
+
+        if (typeof ExampleModels === "undefined") return;
+
+        const model = ExampleModels.generate(modelId);
+        if (!model) return;
+
+        this.activeModelId = modelId;
+
+        // Parse the OBJ string
+        const parsed = GeometryLoader.parseOBJ(model.obj);
+        this.geometryMesh = parsed;
+
+        // Update room dimensions from model suggestion
+        const modelInfo = ExampleModels.getModelList().find(m => m.id === modelId);
+        if (modelInfo && modelInfo.suggestedRoom) {
+            this.inpDimX.value = modelInfo.suggestedRoom[0];
+            this.inpDimY.value = modelInfo.suggestedRoom[1];
+            this.inpDimZ.value = modelInfo.suggestedRoom[2];
+        }
+
+        // Set voxel mode from model
+        const voxelModeEl = document.getElementById("voxelMode");
+        if (voxelModeEl && model.mode) {
+            voxelModeEl.value = model.mode;
+        }
+
+        // Update source position from model suggestion
+        if (model.sourcePos) {
+            this.inpSrcX.value = model.sourcePos[0].toFixed(2);
+            this.inpSrcY.value = model.sourcePos[1].toFixed(2);
+            this.inpSrcZ.value = model.sourcePos[2].toFixed(2);
+        }
+
+        // Set glottal source for vocal tract
+        if (modelId === "vocal-tract") {
+            this.inpSrcType.value = "glottal";
+            this._updateSourceTypeControls();
+        }
+
+        // Update microphone positions from model
+        if (model.micPositions && model.micPositions.length > 0) {
+            this.microphones = model.micPositions.map((mp, idx) => ({
+                id: idx,
+                x: mp.position[0],
+                y: mp.position[1],
+                z: mp.position[2],
+                pattern: "omni",
+                label: mp.label || ("Mic " + (idx + 1))
+            }));
+            this.nextMicId = this.microphones.length;
+            this._renderMicList();
+        }
+
+        // Show geometry in 3D view
+        this._updateGeometry3DView();
+
+        // Display info
+        this._updateGeoInfo("Model: " + (modelInfo ? modelInfo.name : modelId) +
+            " | " + parsed.vertices.length + " vertices, " + parsed.triangles.length + " triangles");
+    }
+
+    _handleModelImport(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const extension = file.name.split(".").pop().toLowerCase();
+        const reader = new FileReader();
+
+        if (extension === "obj") {
+            reader.onload = (e) => {
+                try {
+                    const parsed = GeometryLoader.parseOBJ(e.target.result);
+                    this._applyImportedMesh(parsed, file.name);
+                } catch (err) {
+                    this._updateGeoInfo("Error parsing OBJ: " + err.message);
+                }
+            };
+            reader.readAsText(file);
+        } else if (extension === "stl") {
+            reader.onload = (e) => {
+                try {
+                    const parsed = GeometryLoader.parseSTL(e.target.result);
+                    this._applyImportedMesh(parsed, file.name);
+                } catch (err) {
+                    this._updateGeoInfo("Error parsing STL: " + err.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        } else {
+            this._updateGeoInfo("Unsupported format: " + extension + ". Use .obj or .stl");
+        }
+    }
+
+    _applyImportedMesh(parsed, filename) {
+        if (!parsed.triangles || parsed.triangles.length === 0) {
+            this._updateGeoInfo("Error: loaded geometry has no valid faces");
+            return;
+        }
+
+        // Get current room dimensions
+        const dims = this._getDims();
+
+        // Fit model to room with margins (10% margin on each side)
+        const margin = 0.1;
+        const targetOrigin = [dims[0] * margin, dims[1] * margin, dims[2] * margin];
+        const targetSize = [dims[0] * (1 - 2 * margin), dims[1] * (1 - 2 * margin), dims[2] * (1 - 2 * margin)];
+
+        GeometryLoader.fitToBox(parsed.vertices, targetOrigin, targetSize, true);
+
+        this.geometryMesh = parsed;
+        this.activeModelId = "custom";
+
+        // Reset example model dropdown
+        const exampleEl = document.getElementById("exampleModel");
+        if (exampleEl) exampleEl.value = "none";
+
+        this._updateGeometry3DView();
+        this._updateGeoInfo("File: " + filename +
+            " | " + parsed.vertices.length + " vertices, " + parsed.triangles.length + " triangles");
+    }
+
+    _updateGeometry3DView() {
+        if (!this.geometryMesh || !this.visualizer3D) return;
+        if (typeof GeometryLoader === "undefined") return;
+
+        // Dispose previous geometry before creating new one
+        if (this.geometryThreeGeo) {
+            this.geometryThreeGeo.dispose();
+            this.geometryThreeGeo = null;
+        }
+
+        const geo = GeometryLoader.toThreeGeometry(
+            this.geometryMesh.vertices, this.geometryMesh.triangles);
+        if (geo) {
+            this.geometryThreeGeo = geo;
+            this.visualizer3D.setImportedModel(geo, 0.35);
+        }
+
+        // Update 3D room + sources + mics
+        this._update3DView();
+    }
+
+    _clearGeometry() {
+        this.geometryMesh = null;
+        this.geometryMask = null;
+        if (this.geometryThreeGeo) {
+            this.geometryThreeGeo.dispose();
+        }
+        this.geometryThreeGeo = null;
+        this.activeModelId = "none";
+
+        if (this.visualizer3D) {
+            this.visualizer3D.clearImportedModel();
+        }
+
+        const exampleEl = document.getElementById("exampleModel");
+        if (exampleEl) exampleEl.value = "none";
+        const fileEl = document.getElementById("modelFileInput");
+        if (fileEl) fileEl.value = "";
+
+        this._updateGeoInfo("");
+    }
+
+    _voxelizeGeometry() {
+        if (!this.geometryMesh || !this.solver) return;
+        if (typeof GeometryLoader === "undefined") return;
+
+        const voxelMode = document.getElementById("voxelMode")?.value || "cavity";
+        const wallRho = parseFloat(document.getElementById("geoWallRho")?.value || "2000");
+
+        this.geometryMask = GeometryLoader.voxelize(
+            this.geometryMesh.vertices,
+            this.geometryMesh.triangles,
+            this.solver.nx, this.solver.ny, this.solver.nz,
+            this.solver.dres,
+            voxelMode,
+            1 // wallThickness in grid cells
+        );
+
+        this.solver.applyGeometryMask(this.geometryMask, wallRho);
+    }
+
+    _updateGeoInfo(text) {
+        const el = document.getElementById("geoInfo");
+        if (el) {
+            el.textContent = text;
+            el.style.display = text ? "block" : "none";
+        }
     }
 
     _updateDimInputs() {
@@ -438,6 +833,9 @@ class App {
         // Get mic data from UI before creating solver
         this._getMicDataFromUI();
 
+        // Prepare custom waveform if needed
+        this._prepareCustomWaveform();
+
         // Select solver class based on algorithm
         const algoId = this.algorithmId;
         if (algoId === "standard-fdtd" || typeof BenchmarkRunner === "undefined") {
@@ -457,8 +855,11 @@ class App {
             }
         }
 
-        // Add source
-        this.solver.addSource({
+        // Determine source type and build source config
+        const srcType = this.inpSrcType.value;
+        const isCustomSrc = (srcType === "wav" || srcType === "tone" || srcType === "chord" || srcType === "glottal");
+
+        const sourceConfig = {
             position: [
                 parseFloat(this.inpSrcX.value),
                 parseFloat(this.inpSrcY.value),
@@ -466,9 +867,15 @@ class App {
             ],
             frequency: parseFloat(this.inpSrcFreq.value),
             amplitude: parseFloat(this.inpSrcAmp.value),
-            type: this.inpSrcType.value,
+            type: isCustomSrc ? "custom" : srcType,
             injection: "soft"
-        });
+        };
+
+        if (isCustomSrc && this.customWaveform) {
+            sourceConfig.waveformData = this.customWaveform;
+        }
+
+        this.solver.addSource(sourceConfig);
 
         // Add all microphones
         this.microphones.forEach(mic => {
@@ -477,6 +884,11 @@ class App {
                 label: mic.label
             });
         });
+
+        // Apply geometry/voxelization if loaded
+        if (this.geometryMesh) {
+            this._voxelizeGeometry();
+        }
 
         this.totalSimTime = parseFloat(this.inpSimTime.value);
         this.maxSteps = Math.floor(this.totalSimTime / this.solver.dt);
@@ -580,6 +992,10 @@ class App {
         if (this.visualizer3D) {
             this.visualizer3D._clearAllModes();
             this.visualizer3D.clearPressureField();
+            // Re-show imported model if present
+            if (this.geometryMesh && this.geometryThreeGeo) {
+                this.visualizer3D.setImportedModel(this.geometryThreeGeo, 0.35);
+            }
         }
         this._updateInfo();
         this._renderFrame();

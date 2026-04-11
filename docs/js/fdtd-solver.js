@@ -82,8 +82,9 @@ class FDTDSolver {
      * @param {number[]} src.position - [x,y,z] in meters
      * @param {number} src.frequency - Hz
      * @param {number} src.amplitude - Pa
-     * @param {string} src.type - 'sine'|'impulse'|'gaussian'
+     * @param {string} src.type - 'sine'|'impulse'|'gaussian'|'custom'
      * @param {string} src.injection - 'soft'|'hard'
+     * @param {Float64Array} [src.waveformData] - Custom waveform samples (for type='custom')
      */
     addSource(src) {
         const ix = Math.min(Math.floor(src.position[0] / this.dres), this.nx - 1);
@@ -95,7 +96,8 @@ class FDTDSolver {
             amplitude: src.amplitude || 1.0,
             type: src.type || "sine",
             injection: src.injection || "soft",
-            flatIdx: this.idx(ix, iy, iz)
+            flatIdx: this.idx(ix, iy, iz),
+            waveformData: src.waveformData || null
         });
     }
 
@@ -149,9 +151,35 @@ class FDTDSolver {
                 const tc = 4.0 * sigma;
                 return src.amplitude * Math.exp(-((t - tc) ** 2) / (2 * sigma ** 2));
             }
+            case "custom": {
+                // Use pre-loaded waveform data (WAV file, tone, or glottal pulse)
+                if (src.waveformData && this.step < src.waveformData.length) {
+                    return src.amplitude * src.waveformData[this.step];
+                }
+                return 0;
+            }
             case "sine":
             default:
                 return src.amplitude * Math.sin(2 * Math.PI * src.frequency * t);
+        }
+    }
+
+    /**
+     * Apply a binary voxel mask to the density field.
+     * Cells marked as 1 in the mask receive the specified wall density.
+     * @param {Uint8Array} mask - Binary mask (1=wall, 0=air)
+     * @param {number} wallRho - Wall density (default: 2000 kg/m³)
+     */
+    applyGeometryMask(mask, wallRho) {
+        wallRho = wallRho || 2000;
+        if (mask.length !== this.totalNodes) {
+            console.warn(`Voxel mask size (${mask.length}) != solver grid (${this.totalNodes}). Truncating/padding.`);
+        }
+        const n = Math.min(mask.length, this.totalNodes);
+        for (let i = 0; i < n; i++) {
+            if (mask[i] === 1) {
+                this.rho[i] = wallRho;
+            }
         }
     }
 

@@ -436,6 +436,60 @@ class Visualizer3D {
     }
 
     /**
+     * Set an imported 3D model mesh in the scene.
+     * Displays both a semi-transparent solid and wireframe of the model.
+     * @param {THREE.BufferGeometry} geometry - The mesh geometry (already in Three.js coords)
+     * @param {number} opacity - Render opacity (0–1)
+     */
+    setImportedModel(geometry, opacity) {
+        if (this._initFailed || !geometry) return;
+
+        this.clearImportedModel();
+
+        opacity = opacity !== undefined ? opacity : 0.35;
+
+        // Solid mesh (semi-transparent)
+        const solidMat = new THREE.MeshPhongMaterial({
+            color: 0x4488cc,
+            transparent: true,
+            opacity: opacity,
+            side: THREE.DoubleSide,
+            shininess: 40,
+            depthWrite: false
+        });
+        const solidMesh = new THREE.Mesh(geometry, solidMat);
+        solidMesh.userData.isImportedModel = true;
+        this.scene.add(solidMesh);
+
+        // Wireframe overlay
+        const wireMat = new THREE.MeshBasicMaterial({
+            color: 0x66aaee,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.15
+        });
+        const wireMesh = new THREE.Mesh(geometry.clone(), wireMat);
+        wireMesh.userData.isImportedModel = true;
+        this.scene.add(wireMesh);
+
+        if (!this._importedModelMeshes) this._importedModelMeshes = [];
+        this._importedModelMeshes.push(solidMesh, wireMesh);
+    }
+
+    /**
+     * Clear any imported 3D model from the scene.
+     */
+    clearImportedModel() {
+        if (!this._importedModelMeshes) return;
+        for (const mesh of this._importedModelMeshes) {
+            this.scene.remove(mesh);
+            if (mesh.geometry) mesh.geometry.dispose();
+            if (mesh.material) mesh.material.dispose();
+        }
+        this._importedModelMeshes = [];
+    }
+
+    /**
      * Update pressure field as a colored plane in the 3D scene.
      * @param {Object} slice - { data: Float64Array, width: number, height: number }
      * @param {string} plane - 'xy' | 'xz' | 'yz'

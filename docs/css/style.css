@@ -741,3 +741,80 @@ input[type="range"] {
     background: rgba(14, 165, 233, 0.3);
     color: #fff;
 }
+
+/* ============================================
+   GEOMETRY / 3D MODELS PANEL
+   ============================================ */
+.geo-info {
+    display: none;
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.7rem;
+    background: var(--bg-input);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--accent);
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.btn-sm {
+    padding: 0.3rem 0.7rem;
+    font-size: 0.7rem;
+}
+
+/* ============================================
+   WAV / TONE SOURCE CONTROLS
+   ============================================ */
+.wav-info {
+    display: none;
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.7rem;
+    background: var(--bg-input);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--accent-green);
+    line-height: 1.5;
+}
+
+/* File input styling */
+input[type="file"].sim-input {
+    padding: 0.35rem 0.4rem;
+    font-size: 0.72rem;
+    cursor: pointer;
+    border: 1px dashed var(--border);
+    background: var(--bg-input);
+    border-radius: var(--radius);
+    color: var(--text-secondary);
+}
+
+input[type="file"].sim-input:hover {
+    border-color: var(--accent);
+    color: var(--text-primary);
+}
+
+input[type="file"].sim-input::file-selector-button {
+    background: var(--accent-dim);
+    color: var(--text-primary);
+    border: none;
+    padding: 0.2rem 0.5rem;
+    border-radius: 3px;
+    font-size: 0.68rem;
+    cursor: pointer;
+    margin-right: 0.5rem;
+    transition: background var(--transition);
+}
+
+input[type="file"].sim-input::file-selector-button:hover {
+    background: var(--accent);
+}
+
+/* Mode controls (WAV, tone, chord, glottal) */
+.mode-controls {
+    margin-top: 0.4rem;
+    padding-top: 0.4rem;
+    border-top: 1px solid var(--border-subtle);
+}
