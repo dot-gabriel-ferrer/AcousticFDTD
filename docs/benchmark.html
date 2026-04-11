@@ -262,7 +262,7 @@
 
         .chart-panel canvas {
             display: block;
-            width: 100%;
+            max-width: 100%;
             height: auto;
         }
 
@@ -665,7 +665,8 @@
             dres: parseFloat(document.getElementById("bDres").value),
             c0: med.c0,
             rho: med.rho,
-            boundary: document.getElementById("bBoundary").value
+            boundary: document.getElementById("bBoundary").value,
+            wallReflection: 1.0
         };
 
         var simTime = parseFloat(document.getElementById("bSimTime").value);
@@ -777,17 +778,38 @@
         drawFFTChart("fftChart", results);
     }
 
+    // Setup canvas with correct DPR handling (prevents exponential growth on re-run)
+    function setupCanvas(canvasId, logicalW, logicalH) {
+        var canvas = document.getElementById(canvasId);
+        var dpr = window.devicePixelRatio || 1;
+        canvas.width = logicalW * dpr;
+        canvas.height = logicalH * dpr;
+        canvas.style.width = logicalW + "px";
+        canvas.style.height = logicalH + "px";
+        var ctx = canvas.getContext("2d");
+        ctx.scale(dpr, dpr);
+        return { canvas: canvas, ctx: ctx, W: logicalW, H: logicalH };
+    }
+
+    // Fixed logical dimensions for all charts
+    var CHART_W = 500, CHART_H = 280;
+
+    // Short display names for charts
+    function shortAlgoName(name) {
+        var map = {
+            "Standard FDTD (Yee)": "Yee",
+            "Compact Explicit (KW)": "Compact",
+            "Interpolated Wideband": "IWB",
+            "Waveguide Mesh (Rect)": "DWM",
+            "High-Order FDTD (O4)": "HighOrder"
+        };
+        return map[name] || (name.length > 12 ? name.substring(0, 10) + ".." : name);
+    }
+
     // Bar chart renderer
     function drawBarChart(canvasId, results, key, label, divisor) {
-        var canvas = document.getElementById(canvasId);
-        var ctx = canvas.getContext("2d");
-        var W = canvas.width, H = canvas.height;
-        var dpr = window.devicePixelRatio || 1;
-        canvas.width = W * dpr;
-        canvas.height = H * dpr;
-        canvas.style.width = W + "px";
-        canvas.style.height = H + "px";
-        ctx.scale(dpr, dpr);
+        var s = setupCanvas(canvasId, CHART_W, CHART_H);
+        var ctx = s.ctx, W = s.W, H = s.H;
 
         ctx.fillStyle = "#0e1420";
         ctx.fillRect(0, 0, W, H);
@@ -796,10 +818,10 @@
         if (validResults.length === 0) return;
 
         var colors = ["#0ea5e9", "#a78bfa", "#10b981", "#eab308", "#ef4444", "#f97316", "#06b6d4"];
-        var margin = { top: 20, right: 20, bottom: 65, left: 70 };
+        var margin = { top: 20, right: 20, bottom: 50, left: 70 };
         var plotW = W - margin.left - margin.right;
         var plotH = H - margin.top - margin.bottom;
-        var barW = Math.min(50, plotW / validResults.length - 10);
+        var barW = Math.min(50, Math.max(20, plotW / validResults.length - 12));
 
         var maxVal = Math.max.apply(null, validResults.map(function (r) { return r[key]; }));
         if (divisor) maxVal = maxVal / divisor;
@@ -846,36 +868,24 @@
             ctx.textAlign = "center";
             ctx.fillText(val >= 1000 ? (val / 1000).toFixed(1) + "K" : val.toFixed(0), x + barW / 2, y - 5);
 
-            // Label below
-            ctx.fillStyle = "#8898aa";
-            ctx.font = "8px 'Inter', sans-serif";
-            ctx.save();
-            ctx.translate(x + barW / 2, margin.top + plotH + 8);
-            ctx.rotate(Math.PI / 6);
-            ctx.textAlign = "left";
-            var shortName = r.name.length > 18 ? r.name.substring(0, 16) + ".." : r.name;
-            ctx.fillText(shortName, 0, 0);
-            ctx.restore();
+            // Short label below bar (horizontal, no rotation — avoids overflow)
+            ctx.fillStyle = colors[i % colors.length];
+            ctx.font = "10px 'JetBrains Mono', monospace";
+            ctx.textAlign = "center";
+            ctx.fillText(shortAlgoName(r.name), x + barW / 2, margin.top + plotH + 16);
         }
 
-        // Label
+        // Axis label
         ctx.fillStyle = "#8898aa";
         ctx.font = "10px 'Inter', sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText(label, margin.left + plotW / 2, H - 2);
+        ctx.fillText(label, margin.left + plotW / 2, H - 4);
     }
 
     // Signal overlay chart
     function drawSignalChart(canvasId, results) {
-        var canvas = document.getElementById(canvasId);
-        var ctx = canvas.getContext("2d");
-        var W = canvas.width, H = canvas.height;
-        var dpr = window.devicePixelRatio || 1;
-        canvas.width = W * dpr;
-        canvas.height = H * dpr;
-        canvas.style.width = W + "px";
-        canvas.style.height = H + "px";
-        ctx.scale(dpr, dpr);
+        var s = setupCanvas(canvasId, CHART_W, CHART_H);
+        var ctx = s.ctx, W = s.W, H = s.H;
         ctx.fillStyle = "#0e1420";
         ctx.fillRect(0, 0, W, H);
 
@@ -883,16 +893,19 @@
         if (validResults.length === 0) return;
 
         var colors = ["#0ea5e9", "#a78bfa", "#10b981", "#eab308", "#ef4444"];
-        var margin = { top: 20, right: 20, bottom: 30, left: 60 };
+        var margin = { top: 20, right: 20, bottom: 35, left: 60 };
         var plotW = W - margin.left - margin.right;
         var plotH = H - margin.top - margin.bottom;
 
-        // Find global max
+        // Find global max and max time
         var globalMax = 0;
         var maxLen = 0;
+        var maxTime = 0;
         for (var i = 0; i < validResults.length; i++) {
             var d = validResults[i].receiverData;
             if (d.length > maxLen) maxLen = d.length;
+            var t = d.length * validResults[i].dt;
+            if (t > maxTime) maxTime = t;
             for (var j = 0; j < d.length; j++) {
                 var absv = Math.abs(d[j]);
                 if (absv > globalMax) globalMax = absv;
@@ -902,14 +915,23 @@
 
         // Axes
         ctx.strokeStyle = "#1e293b";
+        ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(margin.left, margin.top);
         ctx.lineTo(margin.left, margin.top + plotH);
         ctx.lineTo(margin.left + plotW, margin.top + plotH);
         ctx.stroke();
 
-        // Zero line
+        // Y-axis ticks
+        ctx.fillStyle = "#4a5568";
+        ctx.font = "9px 'JetBrains Mono', monospace";
+        ctx.textAlign = "right";
         var zeroY = margin.top + plotH / 2;
+        ctx.fillText("+" + globalMax.toExponential(1), margin.left - 5, margin.top + 8);
+        ctx.fillText("0", margin.left - 5, zeroY + 3);
+        ctx.fillText("-" + globalMax.toExponential(1), margin.left - 5, margin.top + plotH - 2);
+
+        // Zero line
         ctx.strokeStyle = "#162032";
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
@@ -917,6 +939,15 @@
         ctx.lineTo(margin.left + plotW, zeroY);
         ctx.stroke();
         ctx.setLineDash([]);
+
+        // X-axis labels
+        ctx.fillStyle = "#4a5568";
+        ctx.font = "9px 'JetBrains Mono', monospace";
+        ctx.textAlign = "center";
+        ctx.fillText("0", margin.left, margin.top + plotH + 14);
+        ctx.fillText((maxTime * 1000).toFixed(1) + " ms", margin.left + plotW, margin.top + plotH + 14);
+        ctx.fillText("p [Pa]", margin.left - 20, margin.top - 5);
+        ctx.fillText("Time", margin.left + plotW / 2, H - 4);
 
         // Draw each signal
         for (var i = 0; i < validResults.length; i++) {
@@ -936,31 +967,25 @@
             ctx.globalAlpha = 1.0;
         }
 
-        // Legend
-        var legendX = margin.left + 8;
-        var legendY = margin.top + 10;
+        // Legend (top-right, compact)
+        var legendX = W - margin.right - 110;
+        var legendY = margin.top + 6;
+        ctx.fillStyle = "rgba(14, 20, 32, 0.85)";
+        ctx.fillRect(legendX - 6, legendY - 4, 118, validResults.length * 14 + 4);
         for (var i = 0; i < validResults.length; i++) {
             ctx.fillStyle = colors[i % colors.length];
-            ctx.fillRect(legendX, legendY + i * 14, 12, 8);
-            ctx.fillStyle = "#8898aa";
-            ctx.font = "9px 'Inter', sans-serif";
+            ctx.fillRect(legendX, legendY + i * 14, 10, 8);
+            ctx.fillStyle = "#cbd5e1";
+            ctx.font = "9px 'JetBrains Mono', monospace";
             ctx.textAlign = "left";
-            var shortName = validResults[i].name.length > 20 ? validResults[i].name.substring(0, 18) + ".." : validResults[i].name;
-            ctx.fillText(shortName, legendX + 16, legendY + i * 14 + 8);
+            ctx.fillText(shortAlgoName(validResults[i].name), legendX + 14, legendY + i * 14 + 8);
         }
     }
 
     // FFT comparison chart
     function drawFFTChart(canvasId, results) {
-        var canvas = document.getElementById(canvasId);
-        var ctx = canvas.getContext("2d");
-        var W = canvas.width, H = canvas.height;
-        var dpr = window.devicePixelRatio || 1;
-        canvas.width = W * dpr;
-        canvas.height = H * dpr;
-        canvas.style.width = W + "px";
-        canvas.style.height = H + "px";
-        ctx.scale(dpr, dpr);
+        var s = setupCanvas(canvasId, CHART_W, CHART_H);
+        var ctx = s.ctx, W = s.W, H = s.H;
         ctx.fillStyle = "#0e1420";
         ctx.fillRect(0, 0, W, H);
 
@@ -968,7 +993,7 @@
         if (validResults.length === 0) return;
 
         var colors = ["#0ea5e9", "#a78bfa", "#10b981", "#eab308", "#ef4444"];
-        var margin = { top: 20, right: 20, bottom: 30, left: 60 };
+        var margin = { top: 20, right: 20, bottom: 35, left: 60 };
         var plotW = W - margin.left - margin.right;
         var plotH = H - margin.top - margin.bottom;
 
@@ -1031,17 +1056,38 @@
 
         if (globalMaxMag === 0) globalMaxMag = 1;
 
+        // Dynamic frequency limit based on actual content
+        var fLimit = Math.min(maxFreq, 5000);
+        // Find actual highest peak to set better limit
+        var highestPeakFreq = 0;
+        for (var ri = 0; ri < spectra.length; ri++) {
+            var sp = spectra[ri];
+            var freqPerBin = sp.fs / (sp.halfN * 2);
+            for (var i = 1; i < sp.halfN; i++) {
+                if (sp.mag[i] > globalMaxMag * 0.05) {
+                    var f = i * freqPerBin;
+                    if (f > highestPeakFreq) highestPeakFreq = f;
+                }
+            }
+        }
+        if (highestPeakFreq > 0) fLimit = Math.min(maxFreq, Math.max(2000, highestPeakFreq * 1.3));
+
         // Axes
         ctx.strokeStyle = "#1e293b";
+        ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(margin.left, margin.top);
         ctx.lineTo(margin.left, margin.top + plotH);
         ctx.lineTo(margin.left + plotW, margin.top + plotH);
         ctx.stroke();
 
-        // Draw spectra (linear scale, limited to useful range)
-        var fLimit = Math.min(maxFreq, 5000);
+        // Y-axis label
+        ctx.fillStyle = "#4a5568";
+        ctx.font = "9px 'JetBrains Mono', monospace";
+        ctx.textAlign = "center";
+        ctx.fillText("|P(f)|", margin.left - 30, margin.top + plotH / 2);
 
+        // Draw spectra
         for (var ri = 0; ri < spectra.length; ri++) {
             var sp = spectra[ri];
             ctx.strokeStyle = colors[ri % colors.length];
@@ -1064,9 +1110,26 @@
         ctx.fillStyle = "#4a5568";
         ctx.font = "9px 'JetBrains Mono', monospace";
         ctx.textAlign = "center";
-        for (var f = 0; f <= fLimit; f += 1000) {
+        var fStep = fLimit <= 2000 ? 500 : fLimit <= 5000 ? 1000 : 2000;
+        for (var f = 0; f <= fLimit; f += fStep) {
             var x = margin.left + (f / fLimit) * plotW;
-            ctx.fillText(f + " Hz", x, margin.top + plotH + 15);
+            ctx.fillText(f >= 1000 ? (f / 1000).toFixed(1) + "k" : f + "", x, margin.top + plotH + 14);
+        }
+        ctx.fillText("Hz", margin.left + plotW + 12, margin.top + plotH + 14);
+        ctx.fillText("Frequency", margin.left + plotW / 2, H - 4);
+
+        // Legend (top-right)
+        var legendX = W - margin.right - 110;
+        var legendY = margin.top + 6;
+        ctx.fillStyle = "rgba(14, 20, 32, 0.85)";
+        ctx.fillRect(legendX - 6, legendY - 4, 118, validResults.length * 14 + 4);
+        for (var i = 0; i < validResults.length; i++) {
+            ctx.fillStyle = colors[i % colors.length];
+            ctx.fillRect(legendX, legendY + i * 14, 10, 8);
+            ctx.fillStyle = "#cbd5e1";
+            ctx.font = "9px 'JetBrains Mono', monospace";
+            ctx.textAlign = "left";
+            ctx.fillText(shortAlgoName(validResults[i].name), legendX + 14, legendY + i * 14 + 8);
         }
     }
 

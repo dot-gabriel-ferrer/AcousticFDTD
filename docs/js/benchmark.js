@@ -269,18 +269,24 @@ class StandardFDTD extends BaseSolver {
                 for (let iy = 0; iy < ny; iy++) {
                     this.p[n1][this.idx(0, iy, iz)] = 0;
                     this.p[n1][this.idx(nx - 1, iy, iz)] = 0;
+                    this.vx[n1][this.idx(0, iy, iz)] = 0;
+                    this.vx[n1][this.idx(nx - 1, iy, iz)] = 0;
                 }
             }
             for (let iz = 0; iz < nz; iz++) {
                 for (let ix = 0; ix < nx; ix++) {
                     this.p[n1][this.idx(ix, 0, iz)] = 0;
                     this.p[n1][this.idx(ix, ny - 1, iz)] = 0;
+                    this.vy[n1][this.idx(ix, 0, iz)] = 0;
+                    this.vy[n1][this.idx(ix, ny - 1, iz)] = 0;
                 }
             }
             for (let iy = 0; iy < ny; iy++) {
                 for (let ix = 0; ix < nx; ix++) {
                     this.p[n1][this.idx(ix, iy, 0)] = 0;
                     this.p[n1][this.idx(ix, iy, nz - 1)] = 0;
+                    this.vz[n1][this.idx(ix, iy, 0)] = 0;
+                    this.vz[n1][this.idx(ix, iy, nz - 1)] = 0;
                 }
             }
         }
@@ -906,23 +912,63 @@ class HighOrderFDTD extends BaseSolver {
             }
         }
 
-        // Simple BC: zero at boundary
-        for (let iz = 0; iz < nz; iz++) {
+        // Boundary conditions
+        const r = this.wallReflection;
+        if (this.boundary === "reflective") {
+            for (let iz = 0; iz < nz; iz++) {
+                for (let iy = 0; iy < ny; iy++) {
+                    vxN1[this.idx(0, iy, iz)] = 0;
+                    vxN1[this.idx(nx - 1, iy, iz)] = 0;
+                    if (r < 1.0) {
+                        pN1[this.idx(0, iy, iz)] *= r;
+                        pN1[this.idx(nx - 1, iy, iz)] *= r;
+                    }
+                }
+            }
+            for (let iz = 0; iz < nz; iz++) {
+                for (let ix = 0; ix < nx; ix++) {
+                    vyN1[this.idx(ix, 0, iz)] = 0;
+                    vyN1[this.idx(ix, ny - 1, iz)] = 0;
+                    if (r < 1.0) {
+                        pN1[this.idx(ix, 0, iz)] *= r;
+                        pN1[this.idx(ix, ny - 1, iz)] *= r;
+                    }
+                }
+            }
             for (let iy = 0; iy < ny; iy++) {
-                vxN1[this.idx(0, iy, iz)] = 0;
-                vxN1[this.idx(nx - 1, iy, iz)] = 0;
+                for (let ix = 0; ix < nx; ix++) {
+                    vzN1[this.idx(ix, iy, 0)] = 0;
+                    vzN1[this.idx(ix, iy, nz - 1)] = 0;
+                    if (r < 1.0) {
+                        pN1[this.idx(ix, iy, 0)] *= r;
+                        pN1[this.idx(ix, iy, nz - 1)] *= r;
+                    }
+                }
             }
-        }
-        for (let iz = 0; iz < nz; iz++) {
-            for (let ix = 0; ix < nx; ix++) {
-                vyN1[this.idx(ix, 0, iz)] = 0;
-                vyN1[this.idx(ix, ny - 1, iz)] = 0;
+        } else if (this.boundary === "absorbing") {
+            for (let iz = 0; iz < nz; iz++) {
+                for (let iy = 0; iy < ny; iy++) {
+                    pN1[this.idx(0, iy, iz)] = 0;
+                    pN1[this.idx(nx - 1, iy, iz)] = 0;
+                    vxN1[this.idx(0, iy, iz)] = 0;
+                    vxN1[this.idx(nx - 1, iy, iz)] = 0;
+                }
             }
-        }
-        for (let iy = 0; iy < ny; iy++) {
-            for (let ix = 0; ix < nx; ix++) {
-                vzN1[this.idx(ix, iy, 0)] = 0;
-                vzN1[this.idx(ix, iy, nz - 1)] = 0;
+            for (let iz = 0; iz < nz; iz++) {
+                for (let ix = 0; ix < nx; ix++) {
+                    pN1[this.idx(ix, 0, iz)] = 0;
+                    pN1[this.idx(ix, ny - 1, iz)] = 0;
+                    vyN1[this.idx(ix, 0, iz)] = 0;
+                    vyN1[this.idx(ix, ny - 1, iz)] = 0;
+                }
+            }
+            for (let iy = 0; iy < ny; iy++) {
+                for (let ix = 0; ix < nx; ix++) {
+                    pN1[this.idx(ix, iy, 0)] = 0;
+                    pN1[this.idx(ix, iy, nz - 1)] = 0;
+                    vzN1[this.idx(ix, iy, 0)] = 0;
+                    vzN1[this.idx(ix, iy, nz - 1)] = 0;
+                }
             }
         }
 
