@@ -9,14 +9,20 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
 <body>
 
 <!-- Header -->
 <header class="header">
-    <div>
-        <h1>AcousticFDTD</h1>
-        <span class="subtitle">3D Acoustic Wave Propagation Simulator -- FDTD</span>
+    <div class="header-brand">
+        <button class="hamburger" id="hamburgerBtn" aria-label="Toggle menu">
+            <span class="material-icons">menu</span>
+        </button>
+        <div>
+            <h1>AcousticFDTD</h1>
+            <span class="subtitle">3D Acoustic Wave Propagation Simulator -- FDTD</span>
+        </div>
     </div>
     <div class="header-links">
         <a href="index.html">Home</a>
@@ -29,12 +35,20 @@
 
 <div class="main-container">
 
+    <!-- Sidebar Overlay Backdrop -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
     <!-- Sidebar Controls -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
 
         <!-- Room Parameters -->
-        <div class="panel">
-            <div class="panel-title">Room</div>
+        <div class="panel" data-panel="room">
+            <div class="panel-title" onclick="this.parentElement.classList.toggle('collapsed')">
+                <span class="material-icons panel-icon">meeting_room</span>
+                <span>Room</span>
+                <span class="material-icons panel-chevron">expand_more</span>
+            </div>
+            <div class="panel-body">
             <div class="form-row">
                 <div class="form-group">
                     <label>X [m]</label>
@@ -59,11 +73,18 @@
                     <input type="number" id="simTime" class="sim-input" value="0.02" min="0.001" max="1" step="0.001">
                 </div>
             </div>
+
+            </div><!-- /panel-body -->
         </div>
 
         <!-- Medium Parameters -->
-        <div class="panel">
-            <div class="panel-title">Medium</div>
+        <div class="panel" data-panel="medium">
+            <div class="panel-title" onclick="this.parentElement.classList.toggle('collapsed')">
+                <span class="material-icons panel-icon">waves</span>
+                <span>Medium</span>
+                <span class="material-icons panel-chevron">expand_more</span>
+            </div>
+            <div class="panel-body">
             <div class="form-row two-col">
                 <div class="form-group">
                     <label>Material</label>
@@ -88,11 +109,18 @@
                     <input type="range" id="wallReflection" class="sim-input" value="1.0" min="0" max="1" step="0.05">
                 </div>
             </div>
+
+            </div><!-- /panel-body -->
         </div>
 
         <!-- Algorithm Selector -->
-        <div class="panel">
-            <div class="panel-title">Algorithm</div>
+        <div class="panel" data-panel="algorithm">
+            <div class="panel-title" onclick="this.parentElement.classList.toggle('collapsed')">
+                <span class="material-icons panel-icon">memory</span>
+                <span>Algorithm</span>
+                <span class="material-icons panel-chevron">expand_more</span>
+            </div>
+            <div class="panel-body">
             <div class="form-row single">
                 <div class="form-group">
                     <label>Solver</label>
@@ -116,11 +144,18 @@
                 </div>
             </div>
             <div id="algoInfo" class="algo-info-box"></div>
+
+            </div><!-- /panel-body -->
         </div>
 
         <!-- Source Parameters -->
-        <div class="panel">
-            <div class="panel-title">Source</div>
+        <div class="panel" data-panel="source">
+            <div class="panel-title" onclick="this.parentElement.classList.toggle('collapsed')">
+                <span class="material-icons panel-icon">graphic_eq</span>
+                <span>Source</span>
+                <span class="material-icons panel-chevron">expand_more</span>
+            </div>
+            <div class="panel-body">
             <div class="form-row two-col">
                 <div class="form-group">
                     <label>Frequency [Hz]</label>
@@ -227,11 +262,18 @@
                     <input type="number" id="srcZ" class="sim-input" value="0.5" min="0" max="5" step="0.05">
                 </div>
             </div>
+
+            </div><!-- /panel-body -->
         </div>
 
         <!-- 3D Geometry / Models -->
-        <div class="panel">
-            <div class="panel-title">Geometry / 3D Models</div>
+        <div class="panel" data-panel="geometry">
+            <div class="panel-title" onclick="this.parentElement.classList.toggle('collapsed')">
+                <span class="material-icons panel-icon">view_in_ar</span>
+                <span>Geometry / 3D Models</span>
+                <span class="material-icons panel-chevron">expand_more</span>
+            </div>
+            <div class="panel-body">
             <div class="form-row single">
                 <div class="form-group">
                     <label>Example Models</label>
@@ -259,6 +301,7 @@
                     <select id="voxelMode" class="sim-input">
                         <option value="cavity" selected>Cavity (Shell = Wall)</option>
                         <option value="solid">Solid (Inside = Wall)</option>
+                        <option value="exterior">Exterior (Outside = Wall)</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -278,14 +321,19 @@
             <div class="btn-group" style="margin-top: 0.5rem">
                 <button id="btnClearGeo" class="btn btn-danger btn-sm">Clear Geometry</button>
             </div>
+
+            </div><!-- /panel-body -->
         </div>
 
         <!-- Microphones -->
-        <div class="panel">
-            <div class="panel-title">
-                Microphones
-                <button id="btnAddMic" class="btn-add-mic" title="Add microphone">+ Add</button>
+        <div class="panel" data-panel="microphones">
+            <div class="panel-title" onclick="this.parentElement.classList.toggle('collapsed')">
+                <span class="material-icons panel-icon">mic</span>
+                <span>Microphones</span>
+                <button id="btnAddMic" class="btn-add-mic" title="Add microphone" onclick="event.stopPropagation()"><span class="material-icons" style="font-size:14px">add</span> Add</button>
+                <span class="material-icons panel-chevron">expand_more</span>
             </div>
+            <div class="panel-body">
             <div id="micList">
                 <div class="mic-item" data-mic-id="0">
                     <div class="mic-item-header">
@@ -314,11 +362,18 @@
                     </div>
                 </div>
             </div>
+
+            </div><!-- /panel-body -->
         </div>
 
         <!-- View Controls -->
-        <div class="panel">
-            <div class="panel-title">Visualization</div>
+        <div class="panel" data-panel="visualization">
+            <div class="panel-title" onclick="this.parentElement.classList.toggle('collapsed')">
+                <span class="material-icons panel-icon">visibility</span>
+                <span>Visualization</span>
+                <span class="material-icons panel-chevron">expand_more</span>
+            </div>
+            <div class="panel-body">
             <div class="form-row single">
                 <div class="form-group">
                     <label>3D Mode</label>
@@ -397,11 +452,18 @@
                     <input type="range" id="stepsPerFrame" value="5" min="1" max="50" step="1">
                 </div>
             </div>
+
+            </div><!-- /panel-body -->
         </div>
 
         <!-- Controls -->
-        <div class="panel">
-            <div class="panel-title">Simulation</div>
+        <div class="panel" data-panel="simulation">
+            <div class="panel-title" onclick="this.parentElement.classList.toggle('collapsed')">
+                <span class="material-icons panel-icon">play_circle</span>
+                <span>Simulation</span>
+                <span class="material-icons panel-chevron">expand_more</span>
+            </div>
+            <div class="panel-body">
             <div class="btn-group">
                 <button id="btnStart" class="btn btn-primary">Start</button>
                 <button id="btnPause" class="btn" disabled>Pause</button>
@@ -419,6 +481,8 @@
                     </select>
                 </div>
             </div>
+
+            </div><!-- /panel-body -->
         </div>
 
     </aside>
@@ -458,7 +522,7 @@
         <!-- Pause Action Bar -->
         <div id="pauseActionBar" class="pause-action-bar" style="display:none">
             <div class="pause-info">
-                <span class="pause-icon">⏸</span>
+                <span class="pause-icon"><span class="material-icons">pause</span></span>
                 <span id="pauseStatusText">Paused</span>
             </div>
             <div class="pause-actions">
@@ -477,8 +541,8 @@
                     3D Environment View
                     <span class="badge" style="background: #a855f7">3D</span>
                     <div class="viz-header-actions">
-                        <button id="btnEditMode" class="btn-icon" title="Toggle Edit Mode">✏️</button>
-                        <button id="btnFullscreen3D" class="btn-icon" title="Fullscreen">⛶</button>
+                        <button id="btnEditMode" class="btn-icon" title="Toggle Edit Mode"><span class="material-icons">edit</span></button>
+                        <button id="btnFullscreen3D" class="btn-icon" title="Fullscreen"><span class="material-icons">fullscreen</span></button>
                     </div>
                 </div>
                 <div class="viz-body" style="min-height: 400px; position: relative;">
@@ -605,6 +669,22 @@
     <a href="https://github.com/dot-gabriel-ferrer/AcousticFDTD" style="color: var(--accent)">GitHub</a>
 </footer>
 
+<!-- Mobile Bottom Navigation -->
+<nav class="mobile-nav" id="mobileNav">
+    <button class="mobile-nav-btn active" data-tab="params">
+        <span class="material-icons">tune</span>
+        <span>Parameters</span>
+    </button>
+    <button class="mobile-nav-btn" data-tab="view">
+        <span class="material-icons">visibility</span>
+        <span>View</span>
+    </button>
+    <button class="mobile-nav-btn" data-tab="sim">
+        <span class="material-icons">play_circle</span>
+        <span>Controls</span>
+    </button>
+</nav>
+
 <!-- Scripts -->
 <!-- Three.js for 3D visualization -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/build/three.min.js"></script>
@@ -624,11 +704,55 @@
 <script src="js/scene-editor.js"></script>
 <script src="js/app.js"></script>
 
-<!-- Wall reflection value display -->
+<!-- Wall reflection value display + Mobile UI logic -->
 <script>
     document.getElementById("wallReflection").addEventListener("input", function () {
         document.getElementById("wallRefVal").textContent = parseFloat(this.value).toFixed(2);
     });
+
+    // Hamburger menu toggle
+    (function() {
+        const hamburger = document.getElementById('hamburgerBtn');
+        const sidebar = document.getElementById('sidebar');
+        const backdrop = document.getElementById('sidebarBackdrop');
+        if (hamburger && sidebar && backdrop) {
+            const toggle = () => {
+                sidebar.classList.toggle('open');
+                backdrop.classList.toggle('visible');
+            };
+            hamburger.addEventListener('click', toggle);
+            backdrop.addEventListener('click', toggle);
+        }
+    })();
+
+    // Mobile bottom nav
+    (function() {
+        const navBtns = document.querySelectorAll('.mobile-nav-btn');
+        const sidebar = document.getElementById('sidebar');
+        navBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                navBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const tab = btn.dataset.tab;
+                if (sidebar) {
+                    sidebar.classList.add('open');
+                    const backdrop = document.getElementById('sidebarBackdrop');
+                    if (backdrop) backdrop.classList.add('visible');
+                    // Scroll to relevant panel
+                    const panelMap = {
+                        params: 'room',
+                        view: 'visualization',
+                        sim: 'simulation'
+                    };
+                    const panelId = panelMap[tab];
+                    if (panelId) {
+                        const panel = sidebar.querySelector('[data-panel="' + panelId + '"]');
+                        if (panel) panel.scrollIntoView({ behavior: 'smooth' });
+                    }
+                }
+            });
+        });
+    })();
 </script>
 
 </body>

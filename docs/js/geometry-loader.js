@@ -379,6 +379,14 @@ class GeometryLoader {
         if (mode === "solid") {
             // Inside cells become walls
             return inside;
+        } else if (mode === "exterior") {
+            // Exterior mode: outside cells become walls, inside stays air
+            // Used for pools/cavities carved into solid ground
+            const mask = new Uint8Array(totalNodes);
+            for (let i = 0; i < totalNodes; i++) {
+                mask[i] = inside[i] === 0 ? 1 : 0;
+            }
+            return mask;
         } else {
             // "cavity" mode: only the shell is wall, interior is air
             const mask = new Uint8Array(totalNodes);

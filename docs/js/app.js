@@ -888,11 +888,11 @@ class App {
         const infoDiv = document.getElementById('validationInfo');
 
         const makeMsg = (msg, type, icon) =>
-            '<div class="validation-msg ' + type + '"><span class="v-icon">' + icon + '</span><span>' + msg + '</span></div>';
+            '<div class="validation-msg ' + type + '"><span class="v-icon"><span class="material-icons">' + icon + '</span></span><span>' + msg + '</span></div>';
 
-        if (errDiv) errDiv.innerHTML = result.errors.map(m => makeMsg(m, 'error', '\u26d4')).join('');
-        if (warnDiv) warnDiv.innerHTML = result.warnings.map(m => makeMsg(m, 'warning', '\u26a0\ufe0f')).join('');
-        if (infoDiv) infoDiv.innerHTML = result.info.map(m => makeMsg(m, 'info', '\u2139\ufe0f')).join('');
+        if (errDiv) errDiv.innerHTML = result.errors.map(m => makeMsg(m, 'error', 'error')).join('');
+        if (warnDiv) warnDiv.innerHTML = result.warnings.map(m => makeMsg(m, 'warning', 'warning')).join('');
+        if (infoDiv) infoDiv.innerHTML = result.info.map(m => makeMsg(m, 'info', 'info')).join('');
 
         panel.style.display = (result.errors.length + result.warnings.length + result.info.length > 0) ? 'block' : 'none';
     }
@@ -1017,7 +1017,7 @@ class App {
         const isFS = vizPanel.classList.contains('fullscreen-3d');
 
         const btn = document.getElementById('btnFullscreen3D');
-        if (btn) btn.textContent = isFS ? '\u2716' : '\u26f6';
+        if (btn) btn.innerHTML = isFS ? '<span class="material-icons">close</span>' : '<span class="material-icons">fullscreen</span>';
 
         // Resize renderer
         if (this.visualizer3D && this.visualizer3D.renderer) {
@@ -1031,7 +1031,7 @@ class App {
             this._fsEscHandler = (e) => {
                 if (e.key === 'Escape') {
                     vizPanel.classList.remove('fullscreen-3d');
-                    if (btn) btn.textContent = '\u26f6';
+                    if (btn) btn.innerHTML = '<span class="material-icons">fullscreen</span>';
                     if (this.visualizer3D) setTimeout(() => this.visualizer3D.onResize(), 100);
                     document.removeEventListener('keydown', this._fsEscHandler);
                 }

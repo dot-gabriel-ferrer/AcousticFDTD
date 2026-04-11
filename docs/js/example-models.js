@@ -113,9 +113,9 @@ class ExampleModels {
             {
                 id: "figure8-pool",
                 name: "Figure-8 Pool (Orca Sounds)",
-                description: "Figure-8 shaped pool for underwater acoustics. Use water medium.",
+                description: "Figure-8 shaped pool with solid exterior for underwater acoustics. Use water medium.",
                 suggestedRoom: [2.0, 1.0, 0.5],
-                mode: "cavity",
+                mode: "exterior",
                 recommendedDres: 0.02,
                 minDres: 0.04
             }
@@ -629,89 +629,83 @@ class ExampleModels {
     }
 
     /**
-     * Generate OBJ string for a figure-8 shaped pool.
-     * Two overlapping circular pools connected by a narrow channel.
-     * Designed for underwater orca acoustics simulation.
+     * Generate OBJ string for a figure-8 shaped pool with solid exterior.
+     * Creates a watertight closed mesh (union of two overlapping circles
+     * extruded to depth, capped top and bottom). Used with "exterior"
+     * voxelization mode so everything outside the pool becomes solid wall.
      * @returns {{ obj: string, sourcePos: number[], micPositions: Object[], mode: string }}
      */
     static generateFigure8Pool() {
         const poolRadius = 0.35;
-        const channelWidth = 0.15;
         const depth = 0.4;
-        const radialRes = 24;
+        const contourRes = 48;
 
         // Centers of two pools along X axis
-        const poolACenterX = 0.5;
-        const poolACenterY = 0.5;
-        const poolBCenterX = poolACenterX + poolRadius * 1.4;
-        const poolBCenterY = 0.5;
+        const cax = 0.5, cay = 0.5;
+        const d = poolRadius * 1.4; // distance between centers
+        const cbx = cax + d, cby = 0.5;
 
+        // Intersection half-angle (equal radii: cos(alpha) = d / 2r)
+        const alpha = Math.acos(d / (2 * poolRadius));
+        const arcSpan = 2 * Math.PI - 2 * alpha;
+        const nA = Math.round(contourRes / 2);
+        const nB = contourRes - nA;
+
+        // Build merged contour (union of two circles)
+        const contour = [];
+
+        // Arc A: from alpha to (2π - alpha), CCW — the outer arc of pool A
+        for (let i = 0; i < nA; i++) {
+            const t = i / nA;
+            const angle = alpha + t * arcSpan;
+            contour.push([cax + poolRadius * Math.cos(angle), cay + poolRadius * Math.sin(angle)]);
+        }
+
+        // Arc B: from (π + alpha) to (π + alpha + arcSpan), CCW — the outer arc of pool B
+        for (let i = 0; i < nB; i++) {
+            const t = i / nB;
+            const angle = Math.PI + alpha + t * arcSpan;
+            contour.push([cbx + poolRadius * Math.cos(angle), cby + poolRadius * Math.sin(angle)]);
+        }
+
+        const n = contour.length;
         const vertices = [];
         const faces = [];
 
-        // Helper: generate circle outline points
-        function circlePoints(cx, cy, r, n) {
-            const pts = [];
-            for (let i = 0; i < n; i++) {
-                const angle = (2 * Math.PI * i) / n;
-                pts.push([cx + r * Math.cos(angle), cy + r * Math.sin(angle)]);
-            }
-            return pts;
+        // Bottom ring (z=0): indices 0..n-1
+        for (const p of contour) vertices.push([p[0], p[1], 0]);
+        // Top ring (z=depth): indices n..2n-1
+        for (const p of contour) vertices.push([p[0], p[1], depth]);
+
+        // Side walls
+        for (let i = 0; i < n; i++) {
+            const i1 = (i + 1) % n;
+            faces.push([i, i1, n + i1]);
+            faces.push([i, n + i1, n + i]);
         }
 
-        const ptsA = circlePoints(poolACenterX, poolACenterY, poolRadius, radialRes);
-        const ptsB = circlePoints(poolBCenterX, poolBCenterY, poolRadius, radialRes);
+        // Fan center for caps — midpoint of circle centers (inside both circles)
+        const fcx = (cax + cbx) / 2, fcy = (cay + cby) / 2;
 
-        // Build vertices: bottom ring, top ring for each pool
-        // Pool A bottom (z=0)
-        const baseIdx = vertices.length;
-        for (const p of ptsA) vertices.push([p[0], p[1], 0]);
-        // Pool A top (z=depth)
-        for (const p of ptsA) vertices.push([p[0], p[1], depth]);
-
-        // Pool A side walls
-        for (let i = 0; i < radialRes; i++) {
-            const i1 = (i + 1) % radialRes;
-            const b0 = baseIdx + i, b1 = baseIdx + i1;
-            const t0 = baseIdx + radialRes + i, t1 = baseIdx + radialRes + i1;
-            faces.push([b0, b1, t1]);
-            faces.push([b0, t1, t0]);
+        // Bottom cap (fan triangulation, winding for downward normal)
+        const botC = vertices.length;
+        vertices.push([fcx, fcy, 0]);
+        for (let i = 0; i < n; i++) {
+            faces.push([botC, (i + 1) % n, i]);
         }
 
-        // Pool A bottom cap
-        const aCenterBottom = vertices.length;
-        vertices.push([poolACenterX, poolACenterY, 0]);
-        for (let i = 0; i < radialRes; i++) {
-            const i1 = (i + 1) % radialRes;
-            faces.push([aCenterBottom, baseIdx + i1, baseIdx + i]);
-        }
-
-        // Pool B
-        const baseBIdx = vertices.length;
-        for (const p of ptsB) vertices.push([p[0], p[1], 0]);
-        for (const p of ptsB) vertices.push([p[0], p[1], depth]);
-
-        // Pool B side walls
-        for (let i = 0; i < radialRes; i++) {
-            const i1 = (i + 1) % radialRes;
-            const b0 = baseBIdx + i, b1 = baseBIdx + i1;
-            const t0 = baseBIdx + radialRes + i, t1 = baseBIdx + radialRes + i1;
-            faces.push([b0, b1, t1]);
-            faces.push([b0, t1, t0]);
-        }
-
-        // Pool B bottom cap
-        const bCenterBottom = vertices.length;
-        vertices.push([poolBCenterX, poolBCenterY, 0]);
-        for (let i = 0; i < radialRes; i++) {
-            const i1 = (i + 1) % radialRes;
-            faces.push([bCenterBottom, baseBIdx + i1, baseBIdx + i]);
+        // Top cap (fan triangulation, winding for upward normal)
+        const topC = vertices.length;
+        vertices.push([fcx, fcy, depth]);
+        for (let i = 0; i < n; i++) {
+            faces.push([topC, n + i, n + (i + 1) % n]);
         }
 
         // Build OBJ string
-        let obj = "# AcousticFDTD - Figure-8 Pool\n";
-        obj += "# Pool A center: " + poolACenterX + ", " + poolACenterY + "\n";
-        obj += "# Pool B center: " + poolBCenterX + ", " + poolBCenterY + "\n";
+        let obj = "# AcousticFDTD - Figure-8 Pool (Solid Exterior)\n";
+        obj += "# Pool A center: " + cax.toFixed(3) + ", " + cay.toFixed(3) + "\n";
+        obj += "# Pool B center: " + cbx.toFixed(3) + ", " + cby.toFixed(3) + "\n";
+        obj += "# Watertight mesh for exterior-mode voxelization\n";
         obj += "o Figure8Pool\n";
 
         for (const v of vertices) {
@@ -721,18 +715,18 @@ class ExampleModels {
             obj += "f " + (f[0] + 1) + " " + (f[1] + 1) + " " + (f[2] + 1) + "\n";
         }
 
-        // Source in pool A center, slightly below surface
-        const sourcePos = [poolACenterX, poolACenterY, depth * 0.5];
+        // Source in pool A center, mid-depth
+        const sourcePos = [cax, cay, depth * 0.5];
 
-        // Mic positions: far pool, narrows, near surface
-        const narrowsX = (poolACenterX + poolBCenterX) / 2;
+        // Mic positions
+        const narrowsX = (cax + cbx) / 2;
         const micPositions = [
-            { position: [poolBCenterX, poolBCenterY, depth * 0.5], label: "Far Pool (B)" },
-            { position: [narrowsX, poolACenterY, depth * 0.5], label: "Narrows" },
-            { position: [poolACenterX, poolACenterY, depth * 0.9], label: "Surface (A)" }
+            { position: [cbx, cby, depth * 0.5], label: "Far Pool (B)" },
+            { position: [narrowsX, cay, depth * 0.5], label: "Narrows" },
+            { position: [cax, cay, depth * 0.9], label: "Surface (A)" }
         ];
 
-        return { obj, sourcePos, micPositions, mode: "cavity" };
+        return { obj, sourcePos, micPositions, mode: "exterior" };
     }
 }
 

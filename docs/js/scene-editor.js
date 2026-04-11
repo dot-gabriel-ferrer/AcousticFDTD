@@ -66,12 +66,15 @@ class SceneEditor {
     menu.className = 'editor-context-menu';
     menu.style.display = 'none';
     menu.innerHTML = `
-      <div class="ctx-item" data-action="add-source">Add Source</div>
-      <div class="ctx-item" data-action="add-mic">Add Microphone</div>
-      <div class="ctx-item" data-action="add-wall">Add Wall</div>
-      <div class="ctx-item" data-action="add-box">Add Box Obstacle</div>
+      <div class="ctx-item" data-action="add-source"><span class="material-icons ctx-icon">graphic_eq</span> Add Source</div>
+      <div class="ctx-item" data-action="add-mic"><span class="material-icons ctx-icon">mic</span> Add Microphone</div>
       <div class="ctx-sep"></div>
-      <div class="ctx-item" data-action="delete">Delete Selected</div>
+      <div class="ctx-item" data-action="add-wall"><span class="material-icons ctx-icon">crop_landscape</span> Add Wall</div>
+      <div class="ctx-item" data-action="add-box"><span class="material-icons ctx-icon">view_in_ar</span> Add Box</div>
+      <div class="ctx-item" data-action="add-sphere"><span class="material-icons ctx-icon">circle</span> Add Sphere</div>
+      <div class="ctx-item" data-action="add-cylinder"><span class="material-icons ctx-icon">panorama_horizontal</span> Add Cylinder</div>
+      <div class="ctx-sep"></div>
+      <div class="ctx-item" data-action="delete"><span class="material-icons ctx-icon">delete</span> Delete Selected</div>
     `;
     menu.addEventListener('click', (e) => {
       const item = e.target.closest('.ctx-item');
@@ -91,7 +94,7 @@ class SceneEditor {
     panel.innerHTML = `
       <div class="prop-header">
         <span>Properties</span>
-        <button class="prop-close">&times;</button>
+        <button class="prop-close"><span class="material-icons" style="font-size:16px">close</span></button>
       </div>
       <div class="prop-body"></div>
     `;
@@ -210,7 +213,7 @@ class SceneEditor {
     if (obj.userData.isSource) type = 'Source';
     else if (obj.userData.isMicrophone) type = 'Microphone';
     else if (obj.userData.isWall) type = 'Wall';
-    else if (obj.userData.isEditorObject) type = 'Editor Object';
+    else if (obj.userData.isEditorObject) type = obj.userData.editorType || 'Editor Object';
 
     // Three.js → FDTD coordinate mapping: FDTD(x,y,z) = Three(x,z,y)
     const pos = obj.position;
@@ -218,18 +221,60 @@ class SceneEditor {
     const fdtdY = pos.z.toFixed(3);
     const fdtdZ = pos.y.toFixed(3);
 
-    body.innerHTML = `
+    let html = `
       <div class="prop-row"><span>Type</span><span>${type}</span></div>
       <div class="prop-row"><span>FDTD X</span><span>${fdtdX} m</span></div>
       <div class="prop-row"><span>FDTD Y</span><span>${fdtdY} m</span></div>
       <div class="prop-row"><span>FDTD Z</span><span>${fdtdZ} m</span></div>
     `;
+
+    // Show rotation for microphones and editor objects
+    if (obj.userData.isMicrophone || obj.userData.isEditorObject) {
+      const rot = obj.rotation;
+      const toDeg = 180 / Math.PI;
+      html += `
+        <div class="prop-row"><span>Rot X</span><span>${(rot.x * toDeg).toFixed(1)}°</span></div>
+        <div class="prop-row"><span>Rot Y</span><span>${(rot.y * toDeg).toFixed(1)}°</span></div>
+        <div class="prop-row"><span>Rot Z</span><span>${(rot.z * toDeg).toFixed(1)}°</span></div>
+      `;
+    }
+
     if (obj.userData.isSource && obj.userData.sourceIndex != null) {
-      body.innerHTML += `<div class="prop-row"><span>Index</span><span>${obj.userData.sourceIndex}</span></div>`;
+      html += `<div class="prop-row"><span>Index</span><span>${obj.userData.sourceIndex}</span></div>`;
     }
     if (obj.userData.isMicrophone && obj.userData.micIndex != null) {
-      body.innerHTML += `<div class="prop-row"><span>Mic #</span><span>${obj.userData.micIndex + 1}</span></div>`;
+      html += `<div class="prop-row"><span>Mic #</span><span>${obj.userData.micIndex + 1}</span></div>`;
     }
+
+    // Material properties for geometry objects
+    if (obj.userData.isWall || obj.userData.isEditorObject) {
+      const density = obj.userData.materialDensity || 2000;
+      const thickness = obj.userData.wallThickness || 2;
+      html += `
+        <div class="prop-row prop-editable">
+          <span>Density</span>
+          <input type="number" class="prop-input" data-prop="materialDensity" value="${density}" min="100" max="20000" step="100"> kg/m³
+        </div>
+        <div class="prop-row prop-editable">
+          <span>Thickness</span>
+          <input type="number" class="prop-input" data-prop="wallThickness" value="${thickness}" min="1" max="20" step="1"> cells
+        </div>
+      `;
+    }
+
+    body.innerHTML = html;
+
+    // Bind editable property inputs
+    body.querySelectorAll('.prop-input').forEach(input => {
+      input.addEventListener('change', () => {
+        const prop = input.dataset.prop;
+        const val = parseFloat(input.value);
+        if (this.selected && prop && !isNaN(val)) {
+          this.selected.userData[prop] = val;
+        }
+      });
+    });
+
     this._propPanel.style.display = 'block';
   }
 
@@ -345,6 +390,12 @@ class SceneEditor {
             position: { x: p.x, y: Math.max(p.y, 0.05), z: p.z },
             size: [0.1, 0.1, 0.02]
           });
+          if (wall) {
+            wall.userData.isEditorObject = true;
+            wall.userData.editorType = 'Wall';
+            wall.userData.materialDensity = 2000;
+            wall.userData.wallThickness = 2;
+          }
           this.editorObjects.push({ type: 'wall', mesh: wall, data: {} });
         }
         break;
@@ -356,8 +407,48 @@ class SceneEditor {
             position: { x: p.x, y: Math.max(p.y, 0.075), z: p.z },
             size: [0.15, 0.15, 0.15]
           });
+          if (box) {
+            box.userData.isEditorObject = true;
+            box.userData.editorType = 'Box';
+            box.userData.materialDensity = 2000;
+            box.userData.wallThickness = 2;
+          }
           this.editorObjects.push({ type: 'box', mesh: box, data: {} });
         }
+        break;
+      }
+      case 'add-sphere': {
+        this._pushUndo({ type: 'add-sphere' });
+        const sphereGeo = new THREE.SphereGeometry(0.08, 16, 12);
+        const sphereMat = new THREE.MeshPhongMaterial({
+          color: 0x888888, transparent: true, opacity: 0.7, side: THREE.DoubleSide
+        });
+        const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+        sphere.position.set(p.x, Math.max(p.y, 0.08), p.z);
+        sphere.userData.isEditorObject = true;
+        sphere.userData.editorType = 'Sphere';
+        sphere.userData.materialDensity = 2000;
+        sphere.userData.wallThickness = 2;
+        this.viz3d.scene.add(sphere);
+        if (this.viz3d.wallMeshes) this.viz3d.wallMeshes.push(sphere);
+        this.editorObjects.push({ type: 'sphere', mesh: sphere, data: {} });
+        break;
+      }
+      case 'add-cylinder': {
+        this._pushUndo({ type: 'add-cylinder' });
+        const cylGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.2, 16);
+        const cylMat = new THREE.MeshPhongMaterial({
+          color: 0x888888, transparent: true, opacity: 0.7, side: THREE.DoubleSide
+        });
+        const cyl = new THREE.Mesh(cylGeo, cylMat);
+        cyl.position.set(p.x, Math.max(p.y, 0.1), p.z);
+        cyl.userData.isEditorObject = true;
+        cyl.userData.editorType = 'Cylinder';
+        cyl.userData.materialDensity = 2000;
+        cyl.userData.wallThickness = 2;
+        this.viz3d.scene.add(cyl);
+        if (this.viz3d.wallMeshes) this.viz3d.wallMeshes.push(cyl);
+        this.editorObjects.push({ type: 'cylinder', mesh: cyl, data: {} });
         break;
       }
       case 'delete': {
@@ -422,7 +513,9 @@ class SceneEditor {
         }
         break;
       case 'add-wall':
-      case 'add-box': {
+      case 'add-box':
+      case 'add-sphere':
+      case 'add-cylinder': {
         const last = this.editorObjects.pop();
         if (last && last.mesh) {
           this.viz3d.scene.remove(last.mesh);
@@ -519,6 +612,14 @@ class SceneEditor {
     } else if (e.key === 'g' && !e.target.closest('input, textarea, select')) {
       this.gridSnap = !this.gridSnap;
       console.log('Grid snap:', this.gridSnap ? 'ON' : 'OFF');
+    } else if (e.key === 'r' && !e.target.closest('input, textarea, select')) {
+      // Toggle between translate and rotate mode
+      if (this.transformControls && this.selected) {
+        const currentMode = this.transformControls.getMode();
+        const newMode = currentMode === 'translate' ? 'rotate' : 'translate';
+        this.transformControls.setMode(newMode);
+        console.log('Transform mode:', newMode);
+      }
     }
   }
 
