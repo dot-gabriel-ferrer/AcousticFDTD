@@ -1165,7 +1165,7 @@ class App {
         this._updateTripleSliceMax();
         return true;
       } catch (err) {
-        this.infoPanel.innerHTML = '<span style="color:var(--accent-red)">\u26d4 Solver creation failed: ' + err.message + '</span>';
+        this.infoPanel.innerHTML = '<span style="color:var(--accent-red)"><span class="material-icons" style="font-size:14px;vertical-align:middle">error</span> Solver creation failed: ' + err.message + '</span>';
         return false;
       }
     }
@@ -1333,7 +1333,7 @@ class App {
                 for (let i = 0; i < checkLen; i++) {
                     if (!isFinite(pCur[i])) {
                         this.pause();
-                        this.infoPanel.innerHTML = '<span style="color:var(--accent-red)">\u26d4 Simulation diverged (NaN/Infinity at step ' + this.solver.step + '). Try increasing dres or changing algorithm.</span>';
+                        this.infoPanel.innerHTML = '<span style="color:var(--accent-red)"><span class="material-icons" style="font-size:14px;vertical-align:middle">error</span> Simulation diverged (NaN/Infinity at step ' + this.solver.step + '). Try increasing dres or changing algorithm.</span>';
                         return;
                     }
                 }

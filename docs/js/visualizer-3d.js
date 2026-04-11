@@ -676,14 +676,53 @@ class Visualizer3D {
     }
 
     /**
-     * Pressure-to-color helper (shared by all modes)
+     * Pressure-to-color helper: blue (-) → dark (0) → red (+)
+     * Returns [r, g, b, alpha] where alpha = |nv|
      */
     _pressureColor(nv) {
+        const abs = Math.abs(nv);
         if (nv >= 0) {
-            return [nv, 0.15 * nv, 0.06 * (1 - nv)];
+            return [0.15 + 0.85 * abs, 0.08 * abs, 0.03 * (1 - abs), abs];
         } else {
-            return [0.06 * (1 + nv), 0.15 * (-nv), -nv];
+            return [0.03 * (1 + nv), 0.08 * abs, 0.15 + 0.85 * abs, abs];
         }
+    }
+
+    /** Lazy-create the custom ShaderMaterial for volumetric/iso point rendering */
+    _getPointShaderMaterial() {
+        if (this._pointShaderMat) return this._pointShaderMat.clone();
+        const vsh = [
+            'attribute float aSize;',
+            'attribute float aAlpha;',
+            'varying vec3 vColor;',
+            'varying float vAlpha;',
+            'void main() {',
+            '  vColor = color;',
+            '  vAlpha = aAlpha;',
+            '  vec4 mv = modelViewMatrix * vec4(position, 1.0);',
+            '  gl_PointSize = aSize * (350.0 / -mv.z);',
+            '  gl_Position = projectionMatrix * mv;',
+            '}'
+        ].join('\n');
+        const fsh = [
+            'varying vec3 vColor;',
+            'varying float vAlpha;',
+            'void main() {',
+            '  float d = distance(gl_PointCoord, vec2(0.5));',
+            '  if (d > 0.5) discard;',
+            '  float a = vAlpha * smoothstep(0.5, 0.15, d);',
+            '  gl_FragColor = vec4(vColor, a);',
+            '}'
+        ].join('\n');
+        this._pointShaderMat = new THREE.ShaderMaterial({
+            vertexShader: vsh,
+            fragmentShader: fsh,
+            vertexColors: true,
+            transparent: true,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+        });
+        return this._pointShaderMat.clone();
     }
 
     /**
@@ -761,20 +800,21 @@ class Visualizer3D {
     }
 
     /**
-     * Update volumetric point cloud from full 3D pressure data
+     * Update volumetric point cloud from full 3D pressure data.
+     * Uses custom ShaderMaterial for per-point size & opacity driven by pressure.
      */
     updateVolumetricPoints(solver, dims, gridSize, density) {
         if (this._initFailed || !solver) return;
 
-        const step = density || 3;
+        // density 1 = sparse/fast, 6 = dense/slow — invert for step
+        const step = Math.max(1, 7 - (density || 3));
         const nx = gridSize[0], ny = gridSize[1], nz = gridSize[2];
         const dx = dims[0], dy = dims[1], dz = dims[2];
 
-        // Get pressure data
         const pCur = solver.p ? solver.p[solver.n] : (solver.pJunction || null);
         if (!pCur) return;
 
-        // Find max
+        // Find max pressure
         let maxVal = 0;
         for (let i = 0; i < pCur.length; i++) {
             const a = Math.abs(pCur[i]);
@@ -782,79 +822,74 @@ class Visualizer3D {
         }
         if (maxVal < 1e-20) maxVal = 1e-20;
 
-        // Count points
-        const ptsX = Math.ceil(nx / step);
-        const ptsY = Math.ceil(ny / step);
-        const ptsZ = Math.ceil(nz / step);
-        const numPts = ptsX * ptsY * ptsZ;
+        const threshold = 0.04 * maxVal; // Hide points below 4% of max
+        const cellSize = Math.max(dx / nx, dy / ny, dz / nz);
+        const baseSize = cellSize * step * 0.8; // Point size ~= cell spacing
 
-        if (!this._volumetricPoints || this._volumetricPoints.geometry.attributes.position.count !== numPts) {
-            // Recreate point cloud
-            if (this._volumetricPoints) {
-                this.scene.remove(this._volumetricPoints);
-                this._volumetricPoints.geometry.dispose();
-                this._volumetricPoints.material.dispose();
-            }
-
-            const positions = new Float32Array(numPts * 3);
-            const colors = new Float32Array(numPts * 3);
-            const sizes = new Float32Array(numPts);
-
-            const geo = new THREE.BufferGeometry();
-            geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-            geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-            geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
-
-            const mat = new THREE.PointsMaterial({
-                size: 0.02,
-                vertexColors: true,
-                transparent: true,
-                opacity: 0.8,
-                sizeAttenuation: true,
-                depthWrite: false
-            });
-
-            this._volumetricPoints = new THREE.Points(geo, mat);
-            this.scene.add(this._volumetricPoints);
-        }
-
-        const posAttr = this._volumetricPoints.geometry.attributes.position;
-        const colAttr = this._volumetricPoints.geometry.attributes.color;
-        let pi = 0;
+        // Count visible points first
+        const tmpPos = [];
+        const tmpCol = [];
+        const tmpSize = [];
+        const tmpAlpha = [];
 
         for (let iz = 0; iz < nz; iz += step) {
             for (let iy = 0; iy < ny; iy += step) {
                 for (let ix = 0; ix < nx; ix += step) {
                     const flatIdx = ix + iy * nx + iz * nx * ny;
                     const val = pCur[flatIdx];
+                    if (Math.abs(val) < threshold) continue;
+
                     const nv = Math.max(-1, Math.min(1, val / maxVal));
                     const absNv = Math.abs(nv);
 
-                    // Position: FDTD (x,y,z) -> Three.js (x,z,y)
-                    posAttr.array[pi * 3] = (ix / nx) * dx;
-                    posAttr.array[pi * 3 + 1] = (iz / nz) * dz;
-                    posAttr.array[pi * 3 + 2] = (iy / ny) * dy;
-
-                    // Color
+                    // FDTD (x,y,z) -> Three.js (x,z,y)
+                    tmpPos.push((ix / nx) * dx, (iz / nz) * dz, (iy / ny) * dy);
                     const [cr, cg, cb] = this._pressureColor(nv);
-                    colAttr.array[pi * 3] = cr;
-                    colAttr.array[pi * 3 + 1] = cg;
-                    colAttr.array[pi * 3 + 2] = cb;
-
-                    pi++;
+                    tmpCol.push(cr, cg, cb);
+                    tmpSize.push(baseSize * (0.5 + 0.5 * absNv));
+                    tmpAlpha.push(0.15 + 0.85 * absNv);
                 }
             }
         }
 
-        posAttr.needsUpdate = true;
-        colAttr.needsUpdate = true;
+        const numPts = tmpPos.length / 3;
+        if (numPts === 0) return;
 
-        // Hide points with very low pressure by making material size depend on pressure
-        this._volumetricPoints.material.opacity = 0.7;
+        // Recreate geometry if point count changed significantly (>20%)
+        const needRecreate = !this._volumetricPoints ||
+            Math.abs(this._volumetricPoints.geometry.attributes.position.count - numPts) > numPts * 0.2;
+
+        if (needRecreate) {
+            if (this._volumetricPoints) {
+                this.scene.remove(this._volumetricPoints);
+                this._volumetricPoints.geometry.dispose();
+                this._volumetricPoints.material.dispose();
+            }
+
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(tmpPos, 3));
+            geo.setAttribute('color', new THREE.Float32BufferAttribute(tmpCol, 3));
+            geo.setAttribute('aSize', new THREE.Float32BufferAttribute(tmpSize, 1));
+            geo.setAttribute('aAlpha', new THREE.Float32BufferAttribute(tmpAlpha, 1));
+
+            const mat = this._getPointShaderMaterial();
+            this._volumetricPoints = new THREE.Points(geo, mat);
+            this.scene.add(this._volumetricPoints);
+        } else {
+            // Update existing buffers — may need to resize
+            const geo = this._volumetricPoints.geometry;
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(tmpPos, 3));
+            geo.setAttribute('color', new THREE.Float32BufferAttribute(tmpCol, 3));
+            geo.setAttribute('aSize', new THREE.Float32BufferAttribute(tmpSize, 1));
+            geo.setAttribute('aAlpha', new THREE.Float32BufferAttribute(tmpAlpha, 1));
+            geo.setDrawRange(0, numPts);
+        }
     }
 
     /**
-     * Update isosurface visualization using threshold detection
+     * Update isosurface using marching-cubes edge interpolation (splat rendering).
+     * For each cell straddling the threshold, edge-crossing positions are computed
+     * and rendered as large overlapping round billboard splats.
      */
     updateIsosurface(solver, dims, gridSize, threshold) {
         if (this._initFailed || !solver) return;
@@ -880,46 +915,110 @@ class Visualizer3D {
         }
         if (maxVal < 1e-20) return;
 
-        const thr = threshold * maxVal;
-        const step = Math.max(1, Math.floor(Math.min(nx, ny, nz) / 20));
+        // Marching Cubes edge table (256 entries — which edges are crossed per vertex config)
+        const ET = [
+            0x000,0x109,0x203,0x30a,0x406,0x50f,0x605,0x70c,
+            0x80c,0x905,0xa0f,0xb06,0xc0a,0xd03,0xe09,0xf00,
+            0x190,0x099,0x393,0x29a,0x596,0x49f,0x795,0x69c,
+            0x99c,0x895,0xb9f,0xa96,0xd9a,0xc93,0xf99,0xe90,
+            0x230,0x339,0x033,0x13a,0x636,0x73f,0x435,0x53c,
+            0xa3c,0xb35,0x83f,0x936,0xe3a,0xf33,0xc39,0xd30,
+            0x3a0,0x2a9,0x1a3,0x0aa,0x7a6,0x6af,0x5a5,0x4ac,
+            0xbac,0xaa5,0x9af,0x8a6,0xfaa,0xea3,0xda9,0xca0,
+            0x460,0x569,0x663,0x76a,0x066,0x16f,0x265,0x36c,
+            0xc6c,0xd65,0xe6f,0xf66,0x86a,0x963,0xa69,0xb60,
+            0x5f0,0x4f9,0x7f3,0x6fa,0x1f6,0x0ff,0x3f5,0x2fc,
+            0xdfc,0xcf5,0xfff,0xef6,0x9fa,0x8f3,0xbf9,0xaf0,
+            0x650,0x759,0x453,0x55a,0x256,0x35f,0x055,0x15c,
+            0xe5c,0xf55,0xc5f,0xd56,0xa5a,0xb53,0x859,0x950,
+            0x7c0,0x6c9,0x5c3,0x4ca,0x3c6,0x2cf,0x1c5,0x0cc,
+            0xfcc,0xec5,0xdcf,0xcc6,0xbca,0xac3,0x9c9,0x8c0,
+            0x8c0,0x9c9,0xac3,0xbca,0xcc6,0xdcf,0xec5,0xfcc,
+            0x0cc,0x1c5,0x2cf,0x3c6,0x4ca,0x5c3,0x6c9,0x7c0,
+            0x950,0x859,0xb53,0xa5a,0xd56,0xc5f,0xf55,0xe5c,
+            0x15c,0x055,0x35f,0x256,0x55a,0x453,0x759,0x650,
+            0xaf0,0xbf9,0x8f3,0x9fa,0xef6,0xfff,0xcf5,0xdfc,
+            0x2fc,0x3f5,0x0ff,0x1f6,0x6fa,0x7f3,0x4f9,0x5f0,
+            0xb60,0xa69,0x963,0x86a,0xf66,0xe6f,0xd65,0xc6c,
+            0x36c,0x265,0x16f,0x066,0x76a,0x663,0x569,0x460,
+            0xca0,0xda9,0xea3,0xfaa,0x8a6,0x9af,0xaa5,0xbac,
+            0x4ac,0x5a5,0x6af,0x7a6,0x0aa,0x1a3,0x2a9,0x3a0,
+            0xd30,0xc39,0xf33,0xe3a,0x936,0x83f,0xb35,0xa3c,
+            0x53c,0x435,0x73f,0x636,0x13a,0x033,0x339,0x230,
+            0xe90,0xf99,0xc93,0xd9a,0xa96,0xb9f,0x895,0x99c,
+            0x69c,0x795,0x49f,0x596,0x29a,0x393,0x099,0x190,
+            0xf00,0xe09,0xd03,0xc0a,0xb06,0xa0f,0x905,0x80c,
+            0x70c,0x605,0x50f,0x406,0x30a,0x203,0x109,0x000
+        ];
+        // 12 edges: which two cube-corner vertices each edge connects
+        const ED = [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+        // 8 cube-corner offsets in (ix, iy, iz) grid increments
+        const CO = [[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]];
 
-        // Generate isosurface points for positive and negative thresholds
-        const createIsoPoints = (sign, color) => {
-            const points = [];
-            for (let iz = 1; iz < nz - 1; iz += step) {
-                for (let iy = 1; iy < ny - 1; iy += step) {
-                    for (let ix = 1; ix < nx - 1; ix += step) {
-                        const val = pCur[ix + iy * nx + iz * nx * ny];
-                        if (sign > 0 && val > thr) {
-                            points.push((ix / nx) * dx, (iz / nz) * dz, (iy / ny) * dy);
-                        } else if (sign < 0 && val < -thr) {
-                            points.push((ix / nx) * dx, (iz / nz) * dz, (iy / ny) * dy);
+        const step = Math.max(1, Math.ceil(Math.cbrt(nx * ny * nz / 25000)));
+        const cellSize = Math.max(dx / nx, dy / ny, dz / nz) * step;
+        const splatSize = cellSize * 1.3; // Slight overlap → continuous surface look
+
+        const buildSurface = (iso, baseR, baseG, baseB) => {
+            const pos = [], col = [], sz = [], al = [];
+            for (let iz = 0; iz < nz - step; iz += step) {
+                for (let iy = 0; iy < ny - step; iy += step) {
+                    for (let ix = 0; ix < nx - step; ix += step) {
+                        // Sample 8 corner values
+                        const v = new Float64Array(8);
+                        for (let c = 0; c < 8; c++) {
+                            v[c] = pCur[(ix + CO[c][0] * step)
+                                      + (iy + CO[c][1] * step) * nx
+                                      + (iz + CO[c][2] * step) * nx * ny] || 0;
+                        }
+                        // Compute cube index
+                        let ci = 0;
+                        for (let c = 0; c < 8; c++) if (v[c] > iso) ci |= (1 << c);
+                        const edges = ET[ci];
+                        if (edges === 0) continue;
+
+                        // For each crossed edge, interpolate the surface position
+                        for (let e = 0; e < 12; e++) {
+                            if (!(edges & (1 << e))) continue;
+                            const [a, b] = ED[e];
+                            const d = v[b] - v[a];
+                            const t = Math.abs(d) > 1e-30
+                                ? Math.max(0, Math.min(1, (iso - v[a]) / d)) : 0.5;
+
+                            // World coords: FDTD (x,y,z) → Three.js (x, z, y)
+                            const wx = (ix + (CO[a][0] + t * (CO[b][0] - CO[a][0])) * step) / nx * dx;
+                            const wy = (iy + (CO[a][1] + t * (CO[b][1] - CO[a][1])) * step) / ny * dy;
+                            const wz = (iz + (CO[a][2] + t * (CO[b][2] - CO[a][2])) * step) / nz * dz;
+
+                            pos.push(wx, wz, wy);
+                            col.push(baseR, baseG, baseB);
+                            sz.push(splatSize);
+                            al.push(0.5);
                         }
                     }
                 }
             }
-            if (points.length < 3) return;
+            if (pos.length < 3) return;
 
             const geo = new THREE.BufferGeometry();
-            geo.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
-            const mat = new THREE.PointsMaterial({
-                color: color,
-                size: 0.03,
-                transparent: true,
-                opacity: 0.6,
-                depthWrite: false
-            });
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+            geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+            geo.setAttribute('aSize', new THREE.Float32BufferAttribute(sz, 1));
+            geo.setAttribute('aAlpha', new THREE.Float32BufferAttribute(al, 1));
+            const mat = this._getPointShaderMaterial();
             const mesh = new THREE.Points(geo, mat);
             this.scene.add(mesh);
             this._isosurfaceMeshes.push(mesh);
         };
 
-        createIsoPoints(1, 0xff3333);  // Positive pressure (red)
-        createIsoPoints(-1, 0x3333ff); // Negative pressure (blue)
+        const thr = threshold * maxVal;
+        buildSurface(thr, 1.0, 0.2, 0.1);    // Positive pressure (red-warm)
+        buildSurface(-thr, 0.1, 0.2, 1.0);   // Negative pressure (blue-cool)
     }
 
     /**
-     * Update particle flow visualization
+     * Update particle flow visualization — particles advected by pressure gradient.
+     * Uses per-vertex size/alpha via custom ShaderMaterial with velocity damping.
      */
     updateParticles(solver, dims, gridSize, numParticles) {
         if (this._initFailed || !solver) return;
@@ -938,71 +1037,88 @@ class Visualizer3D {
         }
         if (maxVal < 1e-20) maxVal = 1e-20;
 
-        if (!this._particleSystem) {
+        const cellSize = Math.max(dx / nx, dy / ny, dz / nz);
+        const ptSize = cellSize * 1.0;
+
+        // Create or recreate if particle count changed
+        if (!this._particleSystem || this._particleSystem.geometry.attributes.position.count !== N) {
+            if (this._particleSystem) {
+                this.scene.remove(this._particleSystem);
+                this._particleSystem.geometry.dispose();
+                this._particleSystem.material.dispose();
+            }
+
             const positions = new Float32Array(N * 3);
             const colors = new Float32Array(N * 3);
+            const sizes = new Float32Array(N);
+            const alphas = new Float32Array(N);
             this._particleVelocities = new Float32Array(N * 3);
 
-            // Random initial positions
             for (let i = 0; i < N; i++) {
                 positions[i * 3] = Math.random() * dx;
                 positions[i * 3 + 1] = Math.random() * dz;
                 positions[i * 3 + 2] = Math.random() * dy;
-                colors[i * 3] = 0.5;
-                colors[i * 3 + 1] = 0.5;
-                colors[i * 3 + 2] = 0.5;
+                colors[i * 3] = colors[i * 3 + 1] = colors[i * 3 + 2] = 0.5;
+                sizes[i] = ptSize;
+                alphas[i] = 0.6;
             }
 
             const geo = new THREE.BufferGeometry();
             geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
             geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            geo.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+            geo.setAttribute('aAlpha', new THREE.BufferAttribute(alphas, 1));
 
-            const mat = new THREE.PointsMaterial({
-                size: 0.012,
-                vertexColors: true,
-                transparent: true,
-                opacity: 0.85,
-                sizeAttenuation: true,
-                depthWrite: false
-            });
-
+            const mat = this._getPointShaderMaterial();
             this._particleSystem = new THREE.Points(geo, mat);
             this.scene.add(this._particleSystem);
         }
 
         const posArr = this._particleSystem.geometry.attributes.position.array;
         const colArr = this._particleSystem.geometry.attributes.color.array;
-        const scale = solver.dt * 50;
+        const sizeArr = this._particleSystem.geometry.attributes.aSize.array;
+        const alphaArr = this._particleSystem.geometry.attributes.aAlpha.array;
+        const velArr = this._particleVelocities;
+
+        // Velocity proportional to room dimensions, normalized by max pressure
+        const roomScale = Math.max(dx, dy, dz);
+        const gradScale = roomScale * 0.012 / maxVal;
+        const damping = 0.92;
 
         for (let i = 0; i < N; i++) {
-            // Current position in Three.js coords (x, z_fdtd, y_fdtd)
             let px = posArr[i * 3];
-            let pz = posArr[i * 3 + 1]; // This is FDTD z (height)
-            let py = posArr[i * 3 + 2]; // This is FDTD y
+            let pz = posArr[i * 3 + 1]; // Three.js Y = FDTD Z
+            let py = posArr[i * 3 + 2]; // Three.js Z = FDTD Y
 
-            // Map to grid indices
             const gx = Math.floor((px / dx) * nx);
             const gy = Math.floor((py / dy) * ny);
             const gz = Math.floor((pz / dz) * nz);
 
             if (gx >= 1 && gx < nx - 1 && gy >= 1 && gy < ny - 1 && gz >= 1 && gz < nz - 1) {
-                // Pressure gradient as velocity proxy
                 const c = gx + gy * nx + gz * nx * ny;
-                const dpx = (pCur[c + 1] - pCur[c - 1]) * scale;
-                const dpy = (pCur[c + nx] - pCur[c - nx]) * scale;
-                const dpz = (pCur[c + nx * ny] - pCur[c - nx * ny]) * scale;
+                const dpx = pCur[c + 1] - pCur[c - 1];
+                const dpy = pCur[c + nx] - pCur[c - nx];
+                const dpz = pCur[c + nx * ny] - pCur[c - nx * ny];
 
-                posArr[i * 3] += dpx;
-                posArr[i * 3 + 2] += dpy;
-                posArr[i * 3 + 1] += dpz;
+                // Smooth velocity with damping for fluid-like motion
+                velArr[i * 3]     = velArr[i * 3]     * damping + dpx * gradScale;
+                velArr[i * 3 + 1] = velArr[i * 3 + 1] * damping + dpz * gradScale;
+                velArr[i * 3 + 2] = velArr[i * 3 + 2] * damping + dpy * gradScale;
 
-                // Color by local pressure
+                posArr[i * 3]     += velArr[i * 3];
+                posArr[i * 3 + 1] += velArr[i * 3 + 1];
+                posArr[i * 3 + 2] += velArr[i * 3 + 2];
+
+                // Color and size by local pressure
                 const val = pCur[c];
                 const nv = Math.max(-1, Math.min(1, val / maxVal));
+                const absNv = Math.abs(nv);
                 const [cr, cg, cb] = this._pressureColor(nv);
                 colArr[i * 3] = cr;
                 colArr[i * 3 + 1] = cg;
                 colArr[i * 3 + 2] = cb;
+                sizeArr[i] = ptSize * (0.5 + 0.8 * absNv);
+                alphaArr[i] = 0.25 + 0.75 * absNv;
             }
 
             // Reset particles that exit the domain
@@ -1012,11 +1128,16 @@ class Visualizer3D {
                 posArr[i * 3] = Math.random() * dx;
                 posArr[i * 3 + 1] = Math.random() * dz;
                 posArr[i * 3 + 2] = Math.random() * dy;
+                velArr[i * 3] = velArr[i * 3 + 1] = velArr[i * 3 + 2] = 0;
+                sizeArr[i] = ptSize;
+                alphaArr[i] = 0.25;
             }
         }
 
         this._particleSystem.geometry.attributes.position.needsUpdate = true;
         this._particleSystem.geometry.attributes.color.needsUpdate = true;
+        this._particleSystem.geometry.attributes.aSize.needsUpdate = true;
+        this._particleSystem.geometry.attributes.aAlpha.needsUpdate = true;
     }
 
     /**
